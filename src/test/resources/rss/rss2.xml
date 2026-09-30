@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+	<channel>
+		<title>Example News</title>
+		<link>https://news.example.com/</link>
+		<description>Sample RSS 2.0 feed covering the edge cases real feeds have</description>
+
+		<!-- 0: complete item -->
+		<item>
+			<title>Rust 2.0 &lt;b&gt;released&lt;/b&gt;</title>
+			<link>https://news.example.com/articles/rust-2</link>
+			<guid isPermaLink="false">article-1001</guid>
+			<pubDate>Wed, 30 Sep 2026 10:15:00 GMT</pubDate>
+			<author>jane@example.com (Jane Doe)</author>
+			<category>Programming</category>
+			<category>Rust</category>
+			<description><![CDATA[<p>The <b>Rust</b> team announced &amp; shipped   a new release.</p><script>alert('x')</script>]]></description>
+		</item>
+
+		<!-- 1: no guid -->
+		<item>
+			<title>No guid here</title>
+			<link>https://news.example.com/articles/no-guid</link>
+			<pubDate>Wed, 30 Sep 2026 09:00:00 GMT</pubDate>
+		</item>
+
+		<!-- 2: relative link, no date -->
+		<item>
+			<title>Relative and undated</title>
+			<link>/articles/relative</link>
+			<guid isPermaLink="false">article-1003</guid>
+		</item>
+
+		<!-- 3: no title -->
+		<item>
+			<link>https://news.example.com/articles/untitled</link>
+			<guid isPermaLink="false">article-1004</guid>
+		</item>
+
+		<!-- 4: link that isn't http(s) -->
+		<item>
+			<title>Sneaky</title>
+			<link>javascript:alert(1)</link>
+			<guid isPermaLink="false">article-1005</guid>
+		</item>
+
+		<!-- 5: no link -->
+		<item>
+			<title>Linkless</title>
+			<guid isPermaLink="false">article-1006</guid>
+		</item>
+
+		<!-- 6: no link, and a non-URL guid left at the default isPermaLink="true" -->
+		<item>
+			<title>Guid is not a permalink</title>
+			<guid>article-1007</guid>
+		</item>
+
+		<!-- 7: no link, but the guid really is a permalink -->
+		<item>
+			<title>Guid is a real permalink</title>
+			<guid>https://news.example.com/articles/permalink</guid>
+		</item>
+	</channel>
+</rss>
