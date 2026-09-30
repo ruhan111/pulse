@@ -13,11 +13,7 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 0: planning. No running pipeline yet._
-
-```
-(nothing yet): Spring Boot 4 / Java 21 skeleton
-```
+_Phase 1: the domain model exists and the package rules are enforced by tests. Nothing ingests data yet._
 
 Target for the first working slice:
 
@@ -33,28 +29,49 @@ RSS feeds ──► RssAdapter ──► PulseEvent ──► EventSink ──�
 |--------------|--------------------------------------------------------------------------------|
 | `PulseEvent` | Something that happened at a source (a post, an edit, a release), normalized   |
 | `Source`     | Which kind of source produced an event (RSS, Hacker News, GitHub, …)           |
-| `Mention`    | A countable key extracted from an event (term, domain, repo): what trends      |
-| `Trend`      | A mention whose activity is unusually high compared with its baseline          |
+| `EventType`  | What happened, independent of where: published, edited, commented              |
+| `EventId`    | Identity derived from `(source, externalId)`, so the same item always has the same id |
+| `Topic`      | The thing that trends: a normalized key such as a term or a domain             |
+| `Mention`    | One occurrence of a topic in one event: the unit that gets counted             |
+| `Trend`      | A topic whose activity is unusually high compared with its baseline            |
 | `EventSink`  | Port the ingestion side publishes into, so the rest of the system can change without touching sources |
 
 ## Package structure
 
-Packages follow business responsibilities, not technical layers:
+Packages follow business responsibilities, not technical layers. Dependencies point inward,
+toward `event`:
 
 ```
 com.example.pulse
-├── event/            domain model: PulseEvent, Source, EventType
-├── ingestion/        source adapters (rss/, hackernews/, …)
-├── trend/            mention extraction, counting, baselines, detection
+├── event/            domain core: PulseEvent, EventId, Source, EventType, EventSink (port)
+├── ingestion/        source adapters (rss/, hackernews/, …) → publish into EventSink
+├── trend/            Topic, Mention, MentionExtractor; later counting, baselines, detection
 ├── api/              HTTP interface
-└── infrastructure/   persistence, configuration, adapters to external tech
+└── infrastructure/   implementations of ports with real technology (PostgreSQL, later Kafka…)
+
+          api ─────────┐
+                       ▼
+ ingestion ──► event ◄── trend
+                 ▲
+ infrastructure ─┘  (may use everything; nothing uses it)
 ```
+
+| Package          | May depend on                  | Must not depend on                     |
+|------------------|--------------------------------|----------------------------------------|
+| `event`          | the JDK only                   | Spring, any other Pulse package        |
+| `ingestion`      | `event`                        | `trend`, `api`, `infrastructure`       |
+| `trend`          | `event`                        | `ingestion`, `api`, `infrastructure`   |
+| `api`            | `event`, `trend`               | `ingestion`, `infrastructure`          |
+| `infrastructure` | everything                     | nothing depends on it                  |
+
+These rules are enforced by [`ArchitectureTest`](src/test/java/com/example/pulse/ArchitectureTest.java),
+so breaking one fails the build.
 
 ## Roadmap
 
 | Phase | Goal                                                                   | Status  |
 |-------|------------------------------------------------------------------------|---------|
-| 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Mention`                 | planned |
+| 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
 | 2     | Ingestion: one RSS adapter producing real events                       | planned |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | planned |
 | 4     | Multiple sources: more feeds plus a high-volume source (Wikipedia / HN) | planned |
@@ -78,8 +95,8 @@ records what was built, which decisions were made and why, what broke, and what 
 
 ## Running locally
 
-_Not runnable yet._ Requires Java 21.
+Requires Java 21. There is no pipeline to run yet, but the tests run:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw test
 ```

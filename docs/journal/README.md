@@ -43,3 +43,4 @@ What this makes easier or harder, and what's next.
 | #   | Title                                          | Phase |
 |-----|------------------------------------------------|-------|
 | 000 | [Why Pulse, and why start small](000-why-pulse.md) | 0     |
+| 001 | [The domain model and package boundaries](001-domain-model.md) | 1     |
