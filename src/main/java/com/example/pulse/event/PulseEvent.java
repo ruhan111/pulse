@@ -38,13 +38,13 @@ public record PulseEvent(
 
 	public PulseEvent {
 		requireNonNull(source, "source");
+		channel = requireText(channel, "channel");
+		externalId = requireText(externalId, "externalId");
 		requireNonNull(type, "type");
 		requireNonNull(occurredAt, "occurredAt");
 		requireNonNull(ingestedAt, "ingestedAt");
-		requireNonNull(url, "url");
-		channel = requireText(channel, "channel");
-		externalId = requireText(externalId, "externalId");
 		title = requireText(title, "title");
+		requireNonNull(url, "url");
 		summary = summary == null ? "" : summary.strip();
 		attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
 	}
