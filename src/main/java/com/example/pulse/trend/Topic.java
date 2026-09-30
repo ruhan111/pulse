@@ -1,7 +1,8 @@
 package com.example.pulse.trend;
 
 import java.util.Locale;
-import java.util.Objects;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * The thing that trends: the key Pulse counts activity for.
@@ -12,8 +13,8 @@ import java.util.Objects;
 public record Topic(TopicKind kind, String value) {
 
 	public Topic {
-		Objects.requireNonNull(kind, "kind");
-		Objects.requireNonNull(value, "value");
+		requireNonNull(kind, "kind");
+		requireNonNull(value, "value");
 		value = value.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
 		if (value.isEmpty()) {
 			throw new IllegalArgumentException("value must not be blank");

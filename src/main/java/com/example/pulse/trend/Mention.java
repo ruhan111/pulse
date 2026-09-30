@@ -5,7 +5,8 @@ import com.example.pulse.event.PulseEvent;
 import com.example.pulse.event.Source;
 
 import java.time.Instant;
-import java.util.Objects;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * One occurrence of a {@link Topic} in one event: the unit trend detection counts.
@@ -16,10 +17,10 @@ import java.util.Objects;
 public record Mention(Topic topic, EventId eventId, Source source, Instant occurredAt) {
 
 	public Mention {
-		Objects.requireNonNull(topic, "topic");
-		Objects.requireNonNull(eventId, "eventId");
-		Objects.requireNonNull(source, "source");
-		Objects.requireNonNull(occurredAt, "occurredAt");
+		requireNonNull(topic, "topic");
+		requireNonNull(eventId, "eventId");
+		requireNonNull(source, "source");
+		requireNonNull(occurredAt, "occurredAt");
 	}
 
 	public static Mention of(Topic topic, PulseEvent event) {

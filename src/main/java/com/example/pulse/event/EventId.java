@@ -1,8 +1,9 @@
 package com.example.pulse.event;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import java.util.UUID;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Identity of a {@link PulseEvent}, derived deterministically from {@code (source, externalId)}.
@@ -14,12 +15,12 @@ import java.util.UUID;
 public record EventId(UUID value) {
 
 	public EventId {
-		Objects.requireNonNull(value, "value");
+		requireNonNull(value, "value");
 	}
 
 	public static EventId of(Source source, String externalId) {
-		Objects.requireNonNull(source, "source");
-		Objects.requireNonNull(externalId, "externalId");
+		requireNonNull(source, "source");
+		requireNonNull(externalId, "externalId");
 		// Source names never contain ':', so the separator cannot make two keys collide.
 		byte[] key = (source.name() + ":" + externalId).getBytes(StandardCharsets.UTF_8);
 		return new EventId(UUID.nameUUIDFromBytes(key));

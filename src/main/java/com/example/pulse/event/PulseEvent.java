@@ -4,7 +4,8 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Objects;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Something that happened at an external source, normalized into Pulse's common model.
@@ -36,11 +37,11 @@ public record PulseEvent(
 		Map<String, String> attributes) {
 
 	public PulseEvent {
-		Objects.requireNonNull(source, "source");
-		Objects.requireNonNull(type, "type");
-		Objects.requireNonNull(occurredAt, "occurredAt");
-		Objects.requireNonNull(ingestedAt, "ingestedAt");
-		Objects.requireNonNull(url, "url");
+		requireNonNull(source, "source");
+		requireNonNull(type, "type");
+		requireNonNull(occurredAt, "occurredAt");
+		requireNonNull(ingestedAt, "ingestedAt");
+		requireNonNull(url, "url");
 		channel = requireText(channel, "channel");
 		externalId = requireText(externalId, "externalId");
 		title = requireText(title, "title");
@@ -62,7 +63,7 @@ public record PulseEvent(
 	}
 
 	private static String requireText(String value, String name) {
-		Objects.requireNonNull(value, name);
+		requireNonNull(value, name);
 		String stripped = value.strip();
 		if (stripped.isEmpty()) {
 			throw new IllegalArgumentException(name + " must not be blank");
