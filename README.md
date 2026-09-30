@@ -13,7 +13,7 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 1: the domain model exists and the package rules are enforced by tests. Nothing ingests data yet._
+_Phase 2a: the domain model exists, and RSS/Atom entries can be mapped to events. Nothing fetches feeds yet._
 
 Target for the first working slice:
 
@@ -72,7 +72,7 @@ so breaking one fails the build.
 | Phase | Goal                                                                   | Status  |
 |-------|------------------------------------------------------------------------|---------|
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
-| 2     | Ingestion: one RSS adapter producing real events                       | planned |
+| 2     | Ingestion: one RSS adapter producing real events                       | in progress (2a done) |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | planned |
 | 4     | Multiple sources: more feeds plus a high-volume source (Wikipedia / HN) | planned |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
