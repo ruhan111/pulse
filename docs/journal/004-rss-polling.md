@@ -24,8 +24,11 @@ the interesting questions are about failure: what breaks what, and what is lost 
   the same idea as committing a Kafka offset only after processing.
 - **Per-feed state is in memory.** Losing it on restart costs one full fetch per feed, which is
   cheap and harmless thanks to idempotency. Not worth a database yet.
-- **`RssProperties`** (`pulse.rss.*`): `enabled` (default off), `feeds`, `poll-interval` (5m),
-  `fetch-deadline` (10s), `max-feed-size` (5MB).
+- **Configuration lives in `application.yaml`** under `pulse.rss`: `enabled` (false), `feeds`,
+  `poll-interval` (5m), `fetch-deadline` (10s), `max-feed-size` (5MB). `RssProperties` is the typed
+  contract that reads it: it converts `5m` to a `Duration` and rejects missing settings at startup
+  ("pulse.rss.poll-interval must be set") instead of failing on the first poll. The configuration
+  tests load the real `application.yaml`, so they check the shipped values.
 - **`RssConfiguration`** wires everything and schedules `pollAll` with a *fixed delay*: the next
   round starts a fixed time after the previous one finished, so slow rounds can't overlap.
 - **One shared `Clock` bean** in `infrastructure.ClockConfiguration`, keeping `PulseApplication` a pure entry point. Components ask for `java.time.Clock` by type, so this doesn't break "nothing depends on infrastructure".
@@ -45,6 +48,8 @@ the interesting questions are about failure: what breaks what, and what is lost 
 - **Storing validators straight after the fetch.** Rejected, and tested (see below).
 - **Polling feeds in parallel.** Not needed at a handful of feeds. One slow feed delays the round
   by at most the fetch deadline. A candidate for load testing in Phase 7.
+- **Defaults in code (`@DefaultValue` on the record).** My first version. Rejected: values would
+  live in two places that can drift apart, and you'd have to read Java to see what's configurable.
 - **Making `pulse.rss.enabled` default to true.** Rejected: the app would then refuse to start until
   an `EventSink` exists. Off by default also lets later load tests run without real polling.
 
@@ -64,7 +69,7 @@ the interesting questions are about failure: what breaks what, and what is lost 
 
 ## Measurements
 
-None from real feeds yet. 53 tests pass (7 poller, 3 configuration, 1 new architecture rule).
+None from real feeds yet. 54 tests pass (7 poller, 4 configuration, 1 new architecture rule).
 
 ## Consequences / open questions
 
