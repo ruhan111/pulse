@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+			https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+	<changeSet id="001-create-events-table" author="pulse">
+		<comment>
+			One row per PulseEvent. The primary key is the EventId derived from (source, external_id),
+			so a re-polled item can never be stored twice. Enums are text so new sources need no migration.
+		</comment>
+		<createTable tableName="events">
+			<column name="id" type="uuid">
+				<constraints primaryKey="true" primaryKeyName="events_pkey"/>
+			</column>
+			<column name="source" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="channel" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="external_id" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="type" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="occurred_at" type="timestamp with time zone">
+				<constraints nullable="false"/>
+			</column>
+			<column name="ingested_at" type="timestamp with time zone">
+				<constraints nullable="false"/>
+			</column>
+			<column name="title" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="url" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="summary" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="attributes" type="jsonb">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+	</changeSet>
+
+</databaseChangeLog>

@@ -16,7 +16,8 @@ starts as a modular monolith; Kafka, Redis etc. only arrive with evidence (see t
 ## Commands
 
 ```bash
-./mvnw test        # all tests; if permission denied: sh mvnw test
+docker compose up -d   # PostgreSQL; the app needs it, tests start their own via Testcontainers
+./mvnw test        # all tests, needs Docker running; if permission denied: sh mvnw test
 ./mvnw spring-boot:run
 ```
 
@@ -39,6 +40,11 @@ record why in the journal.
 - Ingestion publishes into the `EventSink` port and never knows what's behind it.
 - `EventId` is derived from `(source, externalId)`, so the same item always gets the same id.
   `externalId` must be stable across polls.
+- Schema changes are Liquibase XML changesets: one file per change in
+  `src/main/resources/db/changelog/changes/`, included from `db.changelog-master.xml`. Never edit an
+  applied changeset; add a new one.
+- SQL lives in `src/main/resources/sql/` (tests: `src/test/resources/sql/`), one statement per file,
+  named after what it does (`insert_event_if_absent.sql`), loaded with `SqlFile.load(...)`.
 - Prefer a flat package with package-private internals over subpackages. Split only when real
   duplication appears (e.g. extract `ingestion.http` when a second HTTP source needs the fetcher).
 

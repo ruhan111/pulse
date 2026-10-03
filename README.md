@@ -13,11 +13,17 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 2d: five real feeds are polled every 5 minutes and each new event is logged once. Nothing is stored yet._
+_Phase 3a: five real feeds are polled every 5 minutes and every event is stored once in PostgreSQL._
 
 ```
-RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ──► EventSink ──► LoggingEventSink (log each new event once)
+RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ──► EventSink ──► JdbcEventSink ──► PostgreSQL
+                                                                   (insert … on conflict do nothing)
 ```
+
+The `events` table's primary key is the `EventId`, so re-polling a feed or restarting the app never
+stores an item twice. Schema changes are Liquibase XML changesets in
+`src/main/resources/db/changelog/`. SQL lives in `src/main/resources/sql/`, one statement per file,
+named after what it does.
 
 Target for the first working slice:
 
@@ -77,7 +83,7 @@ so breaking one fails the build.
 |-------|------------------------------------------------------------------------|---------|
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
 | 2     | Ingestion: one RSS adapter producing real events                       | built (2a–2d); real-feed run pending |
-| 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | planned |
+| 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | in progress (3a done: PostgreSQL sink) |
 | 4     | Multiple sources: more feeds plus a high-volume source (Wikipedia / HN) | planned |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
 | 6     | API: expose trends and the events behind them                          | planned |
@@ -99,17 +105,18 @@ records what was built, which decisions were made and why, what broke, and what 
 
 ## Running locally
 
-Requires Java 21.
+Requires Java 21 and Docker.
 
 ```bash
-./mvnw spring-boot:run   # polls the feeds in application.yaml and logs new events
-./mvnw test              # tests never touch the internet
+docker compose up -d     # start PostgreSQL first; the app refuses to start without it
+./mvnw spring-boot:run   # applies migrations, polls the feeds in application.yaml, stores new events
+./mvnw test              # needs Docker running (Testcontainers); tests never touch the internet
 ```
 
 ## Local database
 
-PostgreSQL runs in Docker (Docker Desktop on Windows/macOS). The app doesn't use it yet; that
-arrives in Phase 3a.
+PostgreSQL runs in Docker (Docker Desktop on Windows/macOS). The app creates and updates its tables
+itself at startup (Liquibase).
 
 ```bash
 docker compose up -d     # start Postgres (localhost:5432, database/user/password: pulse)
@@ -123,6 +130,10 @@ Connect with any SQL client, or from the container itself:
 
 ```bash
 docker compose exec postgres psql -U pulse -d pulse
+```
+
+```sql
+select source, occurred_at, title from events order by occurred_at desc limit 20;
 ```
 
 ### Backup and restore

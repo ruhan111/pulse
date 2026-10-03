@@ -1,6 +1,18 @@
 spring:
   application:
     name: pulse
+  datasource:
+    # The compose.yaml database. Development-only credentials; override with SPRING_DATASOURCE_URL,
+    # SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD anywhere else.
+    url: jdbc:postgresql://localhost:5432/pulse
+    username: pulse
+    password: pulse
+  liquibase:
+    # Applied at startup, before anything is ingested. If the database is unreachable the app
+    # refuses to start rather than polling feeds into nowhere.
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    # Liquibase otherwise contacts config.liquibase.com at every startup to send usage analytics.
+    analytics-enabled: false
 
 logging:
   charset:
