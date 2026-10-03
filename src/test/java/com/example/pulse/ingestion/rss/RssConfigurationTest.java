@@ -1,6 +1,8 @@
 package com.example.pulse.ingestion.rss;
 
 import com.example.pulse.event.EventSink;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -20,7 +22,8 @@ class RssConfigurationTest {
 	private final ApplicationContextRunner bare = new ApplicationContextRunner()
 		.withUserConfiguration(RssConfiguration.class)
 		.withBean(EventSink.class, () -> event -> EventSink.Accepted.NEW)
-		.withBean(Clock.class, Clock::systemUTC);
+		.withBean(Clock.class, Clock::systemUTC)
+		.withBean(MeterRegistry.class, SimpleMeterRegistry::new);
 
 	/** Loads the real application.yaml, so these tests check the shipped configuration. */
 	private final ApplicationContextRunner shipped = bare
@@ -60,6 +63,7 @@ class RssConfigurationTest {
 			.withInitializer(new ConfigDataApplicationContextInitializer())
 			.withUserConfiguration(RssConfiguration.class)
 			.withBean(Clock.class, Clock::systemUTC)
+			.withBean(MeterRegistry.class, SimpleMeterRegistry::new)
 			.withPropertyValues("pulse.rss.feeds[0]=" + LOCAL_FEED)
 			.run(app -> assertThat(app).hasFailed()
 				.getFailure().hasMessageContaining(EventSink.class.getName()));

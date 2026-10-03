@@ -1,6 +1,7 @@
 package com.example.pulse.ingestion.rss;
 
 import com.example.pulse.event.EventSink;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -25,17 +26,20 @@ public class RssConfiguration {
 	private final RssProperties properties;
 	private final EventSink sink;
 	private final Clock clock;
+	private final MeterRegistry registry;
 
-	RssConfiguration(RssProperties properties, EventSink sink, Clock clock) {
+	RssConfiguration(RssProperties properties, EventSink sink, Clock clock, MeterRegistry registry) {
 		this.properties = properties;
 		this.sink = sink;
 		this.clock = clock;
+		this.registry = registry;
 	}
 
 	@Bean
 	RssPoller rssPoller() {
 		FeedFetcher fetcher = new HttpFeedFetcher(properties.fetchDeadline(), (int) properties.maxFeedSize().toBytes());
-		return new RssPoller(properties.feeds(), fetcher, new RssFeedParser(), new RssEventMapper(clock), sink);
+		return new RssPoller(properties.feeds(), fetcher, new RssFeedParser(), new RssEventMapper(clock), sink,
+				new RssMetrics(registry));
 	}
 
 	/**

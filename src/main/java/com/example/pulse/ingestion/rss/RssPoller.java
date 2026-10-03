@@ -43,16 +43,19 @@ class RssPoller {
 	private final RssFeedParser parser;
 	private final RssEventMapper mapper;
 	private final EventSink sink;
+	private final RssMetrics metrics;
 
 	/** Per-feed state, in memory: lost on restart, which only costs one full fetch per feed. */
 	private final Map<URI, CacheValidators> validators = new ConcurrentHashMap<>();
 
-	RssPoller(List<URI> feeds, FeedFetcher fetcher, RssFeedParser parser, RssEventMapper mapper, EventSink sink) {
+	RssPoller(List<URI> feeds, FeedFetcher fetcher, RssFeedParser parser, RssEventMapper mapper, EventSink sink,
+			RssMetrics metrics) {
 		this.feeds = List.copyOf(feeds);
 		this.fetcher = requireNonNull(fetcher, "fetcher");
 		this.parser = requireNonNull(parser, "parser");
 		this.mapper = requireNonNull(mapper, "mapper");
 		this.sink = requireNonNull(sink, "sink");
+		this.metrics = requireNonNull(metrics, "metrics");
 	}
 
 	void pollAll() {
@@ -70,12 +73,17 @@ class RssPoller {
 	PollResult poll(URI feed) {
 		long start = System.nanoTime();
 		FetchResult fetched = fetcher.fetch(feed, validators.getOrDefault(feed, CacheValidators.NONE));
-		return switch (fetched) {
+		PollResult result = switch (fetched) {
 			case NotModified notModified -> result(feed, Outcome.NOT_MODIFIED, new Counts(), Map.of(), "", start);
-			case Failed failed -> result(feed, Outcome.FETCH_FAILED, new Counts(), Map.of(),
-					failed.reason() + ": " + failed.detail(), start);
+			case Failed failed -> {
+				metrics.fetchFailed(feed, failed.reason());
+				yield result(feed, Outcome.FETCH_FAILED, new Counts(), Map.of(), failed.reason() + ": " + failed.detail(),
+						start);
+			}
 			case Fetched body -> publish(feed, body, start);
 		};
+		metrics.polled(result);
+		return result;
 	}
 
 	private PollResult publish(URI feed, Fetched fetched, long start) {

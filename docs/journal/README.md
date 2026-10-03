@@ -49,3 +49,4 @@ What this makes easier or harder, and what's next.
 | 004 | [Polling feeds on a schedule](004-rss-polling.md) | 2c    |
 | 005 | [A sink, real feeds, and running it](005-running-it.md) | 2d    |
 | 006 | [Storing events in PostgreSQL](006-postgres-sink.md) | 3a    |
+| 007 | [Metrics](007-metrics.md) | 3b    |

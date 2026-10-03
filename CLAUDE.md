@@ -59,6 +59,8 @@ record why in the journal.
 - Expected failures are results, not exceptions: sealed interfaces such as `MappedEntry`
   (`Mapped` / `Skipped`) and `FetchResult` (`Fetched` / `NotModified` / `Failed`), with enum
   reasons so they can be counted as metrics.
+- Metrics use Micrometer with enum names as tag values. Tags must have a bounded set of values
+  (feed URLs from configuration are fine; event ids, titles or URLs from feeds never are).
 - Inject `Clock` instead of calling `Instant.now()`.
 - Javadoc explains *why*, not what. Keep comments short.
 - Prefer the JDK over new dependencies; justify every dependency added.

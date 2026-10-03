@@ -14,6 +14,22 @@ spring:
     # Liquibase otherwise contacts config.liquibase.com at every startup to send usage analytics.
     analytics-enabled: false
 
+server:
+  # Only reachable from this machine. The metrics and health endpoints aren't meant for the network.
+  address: 127.0.0.1
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # http://localhost:8080/actuator/health and /actuator/metrics; nothing else is exposed.
+        include: health, metrics
+  endpoint:
+    health:
+      # Show which component is down (e.g. the database), not just "DOWN".
+      show-details: always
+
 logging:
   charset:
     # Write logs as UTF-8 regardless of the OS default (Windows consoles often use cp1252,
