@@ -3,15 +3,27 @@ package com.example.pulse.event;
 /**
  * Where ingested events go. Source adapters publish into this port and never know what is behind it.
  * <p>
- * Phase 3 implements it with PostgreSQL. If load testing shows ingestion and processing need to be
- * decoupled, a Kafka-backed implementation can replace it without touching any adapter.
- * <p>
  * Contract: implementations must be idempotent on {@link PulseEvent#id()}. Accepting the same
- * event twice has the same effect as accepting it once.
+ * event twice has the same effect as accepting it once, and the second call reports
+ * {@link Accepted#DUPLICATE}.
  */
 @FunctionalInterface
 public interface EventSink {
 
-	void accept(PulseEvent event);
+	Accepted accept(PulseEvent event);
+
+	/**
+	 * What the sink did with an event. Lets callers report how many events were really new, e.g.
+	 * "new=0 duplicates=25" for a feed that resends its full contents on every poll.
+	 */
+	enum Accepted {
+
+		/** First time this id was seen: the event was stored. */
+		NEW,
+
+		/** This id was seen before: nothing changed. */
+		DUPLICATE
+
+	}
 
 }

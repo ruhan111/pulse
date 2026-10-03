@@ -21,12 +21,23 @@ implementation, real feeds in `application.yaml`, and the app running end to end
   a corporate proxy. With no proxy configured it connects directly, as before.
 - **Tests never touch the internet.** Any test that starts the full app either disables RSS or
   points it at a local server.
+- **`EventSink.accept` returns `Accepted.NEW` or `Accepted.DUPLICATE`** (added after the first
+  real run, see below). The poll log now says `new=0 duplicates=25` instead of `published=25`, so
+  you can see at a glance whether a feed brought anything new. This changes the domain port; the
+  sink is the only component that knows whether an event is new, so it has to report it.
+- **Console logs are UTF-8** (`logging.charset.console`), after em dashes and curly quotes in
+  titles showed up as `�` on a Windows console.
 - **An end-to-end test** (`RssIngestionEndToEndTest`) starts the whole application against a local
   feed server, polls every 100ms, and checks that the 4 valid items in `rss2.xml` are logged
   exactly once across repeated polls.
 
 ## Alternatives considered
 
+- **Reporting new vs. duplicate without changing the port**: the sink logging its own periodic
+  summary (counts no longer line up with feeds or rounds), or the poller remembering ids itself
+  (duplicates the sink's job and disagrees with the database after a restart). A future Kafka sink
+  can't know whether an event is a duplicate; it will need a third value like `ACCEPTED`, added
+  when Kafka actually arrives.
 - **A sink that logs every `accept`.** Simpler, but it breaks the idempotency contract, and the log
   would fill with the same items every 5 minutes.
 - **An unbounded set of seen ids.** Memory grows forever in a long-running process.
@@ -44,18 +55,40 @@ implementation, real feeds in `application.yaml`, and the app running end to end
 - **The proxy fix came out of that run.** Before it, the client would have ignored the proxy
   settings entirely and tried to connect directly.
 - **Proving the end-to-end test.** I temporarily made the sink log every `accept`. The test failed
-  with 24 lines instead of 4: 6 poll rounds × 4 items. Restored, and green.
+  with 24 lines instead of 4: 6 poll rounds × 4 items. Later, making the sink report every event as
+  `NEW` also failed it (no `new=0 duplicates=4` line). Restored, and green both times.
+- **The first real run** (on my machine, 3 rounds at a 30 s interval) worked end to end, and the
+  log raised a question it couldn't answer: Lobsters said `published=25` every round, but was
+  anything new? Only the sink knew. That led to `Accepted`.
 
 ## Measurements
 
-Pending: a run against the real feeds, from a machine that can reach them. What to record:
+First real run, Saturday 2026-10-03 19:24, poll interval 30 s, 3 rounds:
 
-- per feed: items per poll, skipped entries by reason, whether it supports `ETag` / `Last-Modified`
-  (how many polls end in `NOT_MODIFIED`), and poll duration;
-- how many *new* events per hour across all feeds, which is the real input rate Phase 3 must handle;
-- anything the sample files didn't predict.
+| Feed           | Items | Conditional GET          | First poll | Later polls |
+|----------------|------:|--------------------------|-----------:|------------:|
+| Hacker News    | 20    | yes (304)                | 3914 ms    | 330 ms      |
+| Lobsters       | 25    | no, full feed every time | 585 ms     | 550 ms      |
+| Ars Technica   | 20    | no                       | 81 ms      | 40–50 ms    |
+| BBC Technology | 21    | no                       | 114 ms     | 27–64 ms    |
+| arXiv cs.AI    | 0     | yes (304)                | 29 ms      | 12–17 ms    |
 
-These go in the next journal entry, since entries aren't rewritten after merging.
+- **86 events on the first round, 0 new in the next minute.** Real RSS volume is tiny once the
+  backlog is in. A longer run is still needed for a real new-events-per-hour number.
+- **Only 2 of 5 feeds support conditional GET.** The other three resend about 66 items every round;
+  the idempotent sink absorbs them.
+- **The first poll is slow** (3.9 s for Hacker News): DNS, TLS handshake and JIT warm-up. Only the
+  first request pays it.
+- **arXiv was empty**: it doesn't publish announcements at weekends. An empty feed isn't
+  necessarily a broken feed.
+- **`skipped=0` everywhere.** Real feeds were cleaner than my samples. The 2a edge cases didn't
+  occur here, but they cost nothing to keep.
+- **The first poll is a backlog**: BBC items went back to Sept 8. If trends were counted by
+  `ingestedAt`, every restart would look like a spike. Phase 5 must count by `occurredAt` and treat
+  the first poll as a backfill.
+- **The same story appeared in several sources**: Apple's Full Disk Access change on Hacker News,
+  Lobsters *and* Ars; Kolibri twice on Hacker News from two different sites. This is exactly the
+  cross-source signal Phase 5 should detect, already visible in 86 events.
 
 ## Consequences / open questions
 

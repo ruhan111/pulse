@@ -37,13 +37,12 @@ class LoggingEventSink implements EventSink {
 	});
 
 	@Override
-	public synchronized void accept(PulseEvent event) {
-		if (seen.add(event.id())) {
-			log.info("new event {} {} | {} | {}", event.source(), event.occurredAt(), event.title(), event.url());
+	public synchronized Accepted accept(PulseEvent event) {
+		if (!seen.add(event.id())) {
+			return Accepted.DUPLICATE;
 		}
-		else {
-			log.debug("duplicate event {} ignored", event.id());
-		}
+		log.info("new event {} {} | {} | {}", event.source(), event.occurredAt(), event.title(), event.url());
+		return Accepted.NEW;
 	}
 
 }

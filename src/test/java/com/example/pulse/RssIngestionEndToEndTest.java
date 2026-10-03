@@ -53,6 +53,7 @@ class RssIngestionEndToEndTest {
 		assertThat(REQUESTS.get()).isGreaterThanOrEqualTo(3);
 		// rss2.xml has 4 valid items; re-polls publish them again, but the sink logs each id once.
 		assertThat(output.getOut().lines().filter(line -> line.contains("new event RSS"))).hasSize(4);
+		assertThat(output.getOut()).contains("new=4 duplicates=0").contains("new=0 duplicates=4");
 	}
 
 	private static HttpServer startFeedServer() {

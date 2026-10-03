@@ -1,6 +1,7 @@
 package com.example.pulse.ingestion.rss;
 
 import com.example.pulse.event.EventSink;
+import com.example.pulse.event.EventSink.Accepted;
 import com.example.pulse.ingestion.rss.FetchResult.Failed;
 import com.example.pulse.ingestion.rss.FetchResult.Fetched;
 import com.example.pulse.ingestion.rss.FetchResult.NotModified;
@@ -70,8 +71,8 @@ class RssPoller {
 		long start = System.nanoTime();
 		FetchResult fetched = fetcher.fetch(feed, validators.getOrDefault(feed, CacheValidators.NONE));
 		return switch (fetched) {
-			case NotModified notModified -> result(feed, Outcome.NOT_MODIFIED, 0, Map.of(), "", start);
-			case Failed failed -> result(feed, Outcome.FETCH_FAILED, 0, Map.of(),
+			case NotModified notModified -> result(feed, Outcome.NOT_MODIFIED, new Counts(), Map.of(), "", start);
+			case Failed failed -> result(feed, Outcome.FETCH_FAILED, new Counts(), Map.of(),
 					failed.reason() + ": " + failed.detail(), start);
 			case Fetched body -> publish(feed, body, start);
 		};
@@ -83,43 +84,59 @@ class RssPoller {
 			parsed = parser.parse(new ByteArrayInputStream(fetched.body()));
 		}
 		catch (FeedParseException ex) {
-			return result(feed, Outcome.PARSE_FAILED, 0, Map.of(), rootMessage(ex), start);
+			return result(feed, Outcome.PARSE_FAILED, new Counts(), Map.of(), rootMessage(ex), start);
 		}
 
-		int published = 0;
+		Counts counts = new Counts();
 		Map<SkipReason, Integer> skipped = new EnumMap<>(SkipReason.class);
 		for (SyndEntry entry : parsed.getEntries()) {
 			switch (mapper.map(entry, feed)) {
 				case Skipped skip -> skipped.merge(skip.reason(), 1, Integer::sum);
 				case Mapped mapped -> {
 					try {
-						sink.accept(mapped.event());
-						published++;
+						counts.add(sink.accept(mapped.event()));
 					}
 					catch (RuntimeException ex) {
-						return result(feed, Outcome.PUBLISH_FAILED, published, skipped, ex.toString(), start);
+						return result(feed, Outcome.PUBLISH_FAILED, counts, skipped, ex.toString(), start);
 					}
 				}
 			}
 		}
 		validators.put(feed, fetched.validators());
-		return result(feed, Outcome.PUBLISHED, published, skipped, "", start);
+		return result(feed, Outcome.PUBLISHED, counts, skipped, "", start);
 	}
 
-	private static PollResult result(URI feed, Outcome outcome, int published, Map<SkipReason, Integer> skipped,
+	private static PollResult result(URI feed, Outcome outcome, Counts counts, Map<SkipReason, Integer> skipped,
 			String detail, long start) {
-		return new PollResult(feed, outcome, published, skipped, detail, Duration.ofNanos(System.nanoTime() - start));
+		return new PollResult(feed, outcome, counts.newEvents, counts.duplicates, skipped, detail,
+				Duration.ofNanos(System.nanoTime() - start));
 	}
 
 	private static void log(PollResult result) {
 		switch (result.outcome()) {
-			case PUBLISHED -> log.info("rss poll {}: published={} skipped={} {} in {}ms", result.feed(),
-					result.published(), result.skippedTotal(), result.skipped(), result.duration().toMillis());
+			case PUBLISHED -> log.info("rss poll {}: new={} duplicates={} skipped={} {} in {}ms", result.feed(),
+					result.newEvents(), result.duplicates(), result.skippedTotal(), result.skipped(),
+					result.duration().toMillis());
 			case NOT_MODIFIED -> log.info("rss poll {}: not modified in {}ms", result.feed(),
 					result.duration().toMillis());
-			default -> log.warn("rss poll {}: {} published={} ({}) in {}ms", result.feed(), result.outcome(),
-					result.published(), result.detail(), result.duration().toMillis());
+			default -> log.warn("rss poll {}: {} new={} duplicates={} ({}) in {}ms", result.feed(), result.outcome(),
+					result.newEvents(), result.duplicates(), result.detail(), result.duration().toMillis());
 		}
+	}
+
+	/** Tallies what the sink did with each event of one poll. */
+	private static final class Counts {
+
+		int newEvents;
+		int duplicates;
+
+		void add(Accepted accepted) {
+			switch (accepted) {
+				case NEW -> newEvents++;
+				case DUPLICATE -> duplicates++;
+			}
+		}
+
 	}
 
 	private static String rootMessage(Throwable ex) {

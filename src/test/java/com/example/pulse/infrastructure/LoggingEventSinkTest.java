@@ -1,5 +1,6 @@
 package com.example.pulse.infrastructure;
 
+import com.example.pulse.event.EventSink.Accepted;
 import com.example.pulse.event.EventType;
 import com.example.pulse.event.PulseEvent;
 import com.example.pulse.event.Source;
@@ -20,10 +21,10 @@ class LoggingEventSinkTest {
 	private final LoggingEventSink sink = new LoggingEventSink();
 
 	@Test
-	void logsEachEventOnlyOnce(CapturedOutput output) {
-		sink.accept(event("1", "First"));
-		sink.accept(event("1", "First"));
-		sink.accept(event("2", "Second"));
+	void reportsAndLogsEachEventOnlyOnce(CapturedOutput output) {
+		assertThat(sink.accept(event("1", "First"))).isEqualTo(Accepted.NEW);
+		assertThat(sink.accept(event("1", "First"))).isEqualTo(Accepted.DUPLICATE);
+		assertThat(sink.accept(event("2", "Second"))).isEqualTo(Accepted.NEW);
 
 		assertThat(output.getOut()).containsOnlyOnce("First").containsOnlyOnce("Second");
 	}

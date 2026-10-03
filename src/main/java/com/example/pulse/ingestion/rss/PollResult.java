@@ -9,16 +9,17 @@ import static java.util.Objects.requireNonNull;
 /**
  * What happened when one feed was polled. Everything a log line or a metric needs.
  *
- * @param published events handed to the sink
- * @param skipped   entries that couldn't become events, counted by reason
- * @param detail    why the poll failed, empty otherwise
+ * @param newEvents  events the sink hadn't seen before
+ * @param duplicates events the sink already had, e.g. because the feed resends its full contents
+ * @param skipped    entries that couldn't become events, counted by reason
+ * @param detail     why the poll failed, empty otherwise
  */
-record PollResult(URI feed, Outcome outcome, int published, Map<SkipReason, Integer> skipped,
+record PollResult(URI feed, Outcome outcome, int newEvents, int duplicates, Map<SkipReason, Integer> skipped,
 		String detail, Duration duration) {
 
 	enum Outcome {
 
-		/** The feed was fetched, parsed and every event was published. */
+		/** The feed was fetched, parsed and every event was handed to the sink. */
 		PUBLISHED,
 
 		/** The server answered 304; nothing to do. */

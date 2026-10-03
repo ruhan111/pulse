@@ -19,7 +19,7 @@ class RssConfigurationTest {
 
 	private final ApplicationContextRunner bare = new ApplicationContextRunner()
 		.withUserConfiguration(RssConfiguration.class)
-		.withBean(EventSink.class, () -> event -> { })
+		.withBean(EventSink.class, () -> event -> EventSink.Accepted.NEW)
 		.withBean(Clock.class, Clock::systemUTC);
 
 	/** Loads the real application.yaml, so these tests check the shipped configuration. */
