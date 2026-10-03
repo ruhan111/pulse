@@ -13,7 +13,11 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 2c: configured feeds are polled on a schedule and their events published to an `EventSink`. No sink implementation exists yet, so polling is off by default._
+_Phase 2d: five real feeds are polled every 5 minutes and each new event is logged once. Nothing is stored yet._
+
+```
+RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ──► EventSink ──► LoggingEventSink (log each new event once)
+```
 
 Target for the first working slice:
 
@@ -72,7 +76,7 @@ so breaking one fails the build.
 | Phase | Goal                                                                   | Status  |
 |-------|------------------------------------------------------------------------|---------|
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
-| 2     | Ingestion: one RSS adapter producing real events                       | in progress (2a–2c done) |
+| 2     | Ingestion: one RSS adapter producing real events                       | built (2a–2d); real-feed run pending |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | planned |
 | 4     | Multiple sources: more feeds plus a high-volume source (Wikipedia / HN) | planned |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
@@ -95,8 +99,9 @@ records what was built, which decisions were made and why, what broke, and what 
 
 ## Running locally
 
-Requires Java 21. There is no pipeline to run yet, but the tests run:
+Requires Java 21.
 
 ```bash
-./mvnw test
+./mvnw spring-boot:run   # polls the feeds in application.yaml and logs new events
+./mvnw test              # tests never touch the internet
 ```

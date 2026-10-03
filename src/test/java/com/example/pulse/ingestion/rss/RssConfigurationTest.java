@@ -17,38 +17,38 @@ class RssConfigurationTest {
 	// Closed local port: polling starts as soon as the context does, so keep it off the internet.
 	private static final String LOCAL_FEED = "http://127.0.0.1:9/feed.xml";
 
-	/** Loads the real application.yaml, so these tests check the shipped configuration. */
-	private final ApplicationContextRunner context = new ApplicationContextRunner()
-		.withInitializer(new ConfigDataApplicationContextInitializer())
+	private final ApplicationContextRunner bare = new ApplicationContextRunner()
 		.withUserConfiguration(RssConfiguration.class)
-		.withBean(EventSink.class, () -> event -> { })
+		.withBean(EventSink.class, () -> event -> EventSink.Accepted.NEW)
 		.withBean(Clock.class, Clock::systemUTC);
 
+	/** Loads the real application.yaml, so these tests check the shipped configuration. */
+	private final ApplicationContextRunner shipped = bare
+		.withInitializer(new ConfigDataApplicationContextInitializer())
+		.withPropertyValues("pulse.rss.feeds[0]=" + LOCAL_FEED);
+
 	@Test
-	void isOffInApplicationYaml() {
-		context.run(app -> assertThat(app).doesNotHaveBean(RssPoller.class));
+	void isOffWhenNotEnabled() {
+		bare.run(app -> assertThat(app).doesNotHaveBean(RssPoller.class));
 	}
 
 	@Test
-	void bindsApplicationYamlWhenEnabled() {
-		context
-			.withPropertyValues("pulse.rss.enabled=true", "pulse.rss.feeds[0]=" + LOCAL_FEED)
-			.run(app -> {
-				assertThat(app).hasSingleBean(RssPoller.class);
-				RssProperties properties = app.getBean(RssProperties.class);
-				assertThat(properties.feeds()).containsExactly(URI.create(LOCAL_FEED));
-				assertThat(properties.pollInterval()).isEqualTo(Duration.ofMinutes(5));
-				assertThat(properties.fetchDeadline()).isEqualTo(Duration.ofSeconds(10));
-				assertThat(properties.maxFeedSize()).isEqualTo(DataSize.ofMegabytes(5));
-			});
+	void bindsApplicationYaml() {
+		shipped.run(app -> {
+			assertThat(app).hasSingleBean(RssPoller.class);
+			RssProperties properties = app.getBean(RssProperties.class);
+			assertThat(properties.enabled()).isTrue();
+			// An overriding source replaces the whole list instead of merging into it.
+			assertThat(properties.feeds()).containsExactly(URI.create(LOCAL_FEED));
+			assertThat(properties.pollInterval()).isEqualTo(Duration.ofMinutes(5));
+			assertThat(properties.fetchDeadline()).isEqualTo(Duration.ofSeconds(10));
+			assertThat(properties.maxFeedSize()).isEqualTo(DataSize.ofMegabytes(5));
+		});
 	}
 
 	@Test
 	void failsToStartWhenASettingIsMissing() {
-		new ApplicationContextRunner()
-			.withUserConfiguration(RssConfiguration.class)
-			.withBean(EventSink.class, () -> event -> { })
-			.withBean(Clock.class, Clock::systemUTC)
+		bare
 			.withPropertyValues("pulse.rss.enabled=true")
 			.run(app -> assertThat(app).hasFailed()
 				.getFailure().rootCause().hasMessageContaining("pulse.rss.poll-interval must be set"));
@@ -60,7 +60,7 @@ class RssConfigurationTest {
 			.withInitializer(new ConfigDataApplicationContextInitializer())
 			.withUserConfiguration(RssConfiguration.class)
 			.withBean(Clock.class, Clock::systemUTC)
-			.withPropertyValues("pulse.rss.enabled=true")
+			.withPropertyValues("pulse.rss.feeds[0]=" + LOCAL_FEED)
 			.run(app -> assertThat(app).hasFailed()
 				.getFailure().hasMessageContaining(EventSink.class.getName()));
 	}
