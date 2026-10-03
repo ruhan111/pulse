@@ -8,6 +8,9 @@ import com.example.pulse.ingestion.rss.FetchResult.Failed;
 import com.example.pulse.ingestion.rss.FetchResult.Fetched;
 import com.example.pulse.ingestion.rss.FetchResult.NotModified;
 import com.example.pulse.ingestion.rss.PollResult.Outcome;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -24,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,6 +41,7 @@ class RssPollerTest {
 	private final Map<URI, List<CacheValidators>> sentValidators = new HashMap<>();
 	private final List<PulseEvent> published = new ArrayList<>();
 	private final Set<EventId> seen = new HashSet<>();
+	private final MeterRegistry registry = new SimpleMeterRegistry();
 
 	/** Behaves like a real sink: remembers ids and reports duplicates. */
 	private final EventSink sink = event -> {
@@ -157,9 +162,57 @@ class RssPollerTest {
 		assertThat(sentValidators.get(NEWS)).containsExactly(CacheValidators.NONE, CacheValidators.NONE);
 	}
 
+	@Test
+	void recordsEachPollWithItsOutcomeAndDuration() {
+		responses.put(NEWS, new Fetched(sample("rss2.xml"), V1));
+		RssPoller poller = poller(sink);
+
+		PollResult published = poller.poll(NEWS);
+		responses.put(NEWS, new NotModified());
+		poller.poll(NEWS);
+
+		Timer publishedPolls = registry.get("pulse.rss.polls").tag("feed", NEWS.toString()).tag("outcome", "PUBLISHED")
+			.timer();
+		assertThat(publishedPolls.count()).isEqualTo(1);
+		assertThat(publishedPolls.totalTime(TimeUnit.NANOSECONDS))
+			.isEqualTo(published.duration().toNanos());
+		assertThat(registry.get("pulse.rss.polls").tag("outcome", "NOT_MODIFIED").timer().count()).isEqualTo(1);
+	}
+
+	@Test
+	void countsSkippedEntriesByReason() {
+		responses.put(NEWS, new Fetched(sample("rss2.xml"), V1));
+
+		poller(sink).poll(NEWS);
+
+		assertThat(skipped("MISSING_LINK")).isEqualTo(2);
+		assertThat(skipped("MISSING_TITLE")).isEqualTo(1);
+		assertThat(skipped("INVALID_LINK")).isEqualTo(1);
+		assertThat(registry.find("pulse.rss.entries.skipped").tag("reason", "INVALID_ENTRY").counter()).isNull();
+	}
+
+	@Test
+	void countsFetchFailuresByReason() {
+		responses.put(NEWS, new Failed(FetchFailure.TIMEOUT, "slow"));
+		RssPoller poller = poller(sink);
+
+		poller.poll(NEWS);
+		poller.poll(NEWS);
+
+		assertThat(registry.get("pulse.rss.fetch.failures").tag("feed", NEWS.toString()).tag("reason", "TIMEOUT")
+			.counter().count()).isEqualTo(2);
+		assertThat(registry.get("pulse.rss.polls").tag("outcome", "FETCH_FAILED").timer().count()).isEqualTo(2);
+	}
+
+	private double skipped(String reason) {
+		return registry.get("pulse.rss.entries.skipped").tag("feed", NEWS.toString()).tag("reason", reason).counter()
+			.count();
+	}
+
 	private RssPoller poller(EventSink sink) {
 		Clock clock = Clock.fixed(Instant.parse("2026-10-03T12:00:00Z"), ZoneOffset.UTC);
-		return new RssPoller(List.of(NEWS, BLOG), fetcher, new RssFeedParser(), new RssEventMapper(clock), sink);
+		return new RssPoller(List.of(NEWS, BLOG), fetcher, new RssFeedParser(), new RssEventMapper(clock), sink,
+				new RssMetrics(registry));
 	}
 
 	private static byte[] sample(String name) {

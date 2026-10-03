@@ -2,11 +2,15 @@ package com.example.pulse.infrastructure;
 
 import com.example.pulse.event.EventSink;
 import com.example.pulse.event.PulseEvent;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -20,6 +24,9 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * Failures (database down, timeout) are thrown, not swallowed: the poller then keeps the feed's old
  * cache validators and re-sends everything next round, which is safe because duplicates are ignored.
+ * <p>
+ * Records what happened to each event as metrics: new or duplicate per source, insert latency, and
+ * how late new events arrive. The sink is the only place that knows whether an event is new.
  */
 @Component
 class JdbcEventSink implements EventSink {
@@ -43,15 +50,49 @@ class JdbcEventSink implements EventSink {
 
 	private static final Logger log = LoggerFactory.getLogger(JdbcEventSink.class);
 
+	/**
+	 * Percentiles and max cover a sliding window. Micrometer's default is 2 minutes, which would be
+	 * empty most of the time with polls every 5 minutes.
+	 */
+	private static final Duration STATISTICS_WINDOW = Duration.ofHours(1);
+
 	private final JdbcClient jdbc;
+	private final MeterRegistry registry;
 	private final String insertEventIfAbsent = SqlFile.load("insert_event_if_absent");
 
-	JdbcEventSink(JdbcClient jdbc) {
+	JdbcEventSink(JdbcClient jdbc, MeterRegistry registry) {
 		this.jdbc = requireNonNull(jdbc, "jdbc");
+		this.registry = requireNonNull(registry, "registry");
 	}
 
 	@Override
 	public Accepted accept(PulseEvent event) {
+		Timer.Sample sample = Timer.start(registry);
+		Accepted accepted;
+		try {
+			accepted = insert(event) == 0 ? Accepted.DUPLICATE : Accepted.NEW;
+		}
+		catch (RuntimeException ex) {
+			sample.stop(insertTimer("FAILED"));
+			throw ex;
+		}
+		sample.stop(insertTimer(accepted.name()));
+
+		Counter.builder("pulse.events.accepted")
+			.description("Events handed to the sink, by whether they were new")
+			.tag("source", event.source().name())
+			.tag("result", accepted.name())
+			.register(registry)
+			.increment();
+		if (accepted == Accepted.NEW) {
+			recordLateness(event);
+			log.info("new event {} {} | {} | {}", event.source(), event.occurredAt(), event.title(), event.url());
+		}
+		return accepted;
+	}
+
+	/** Returns the number of rows inserted: 1 for a new event, 0 for a duplicate. */
+	private int insert(PulseEvent event) {
 		// Keys and values as two parallel arrays, turned into jsonb by Postgres itself: no JSON
 		// library, and no hand-written escaping to get wrong.
 		String[] keys = event.attributes().keySet().toArray(String[]::new);
@@ -60,7 +101,7 @@ class JdbcEventSink implements EventSink {
 			values[i] = event.attributes().get(keys[i]);
 		}
 
-		int inserted = jdbc.sql(insertEventIfAbsent)
+		return jdbc.sql(insertEventIfAbsent)
 			.param(PARAM_ID, event.id().value())
 			.param(PARAM_SOURCE, event.source().name())
 			.param(PARAM_CHANNEL, event.channel())
@@ -74,11 +115,42 @@ class JdbcEventSink implements EventSink {
 			.param(PARAM_ATTRIBUTE_KEYS, keys)
 			.param(PARAM_ATTRIBUTE_VALUES, values)
 			.update();
-		if (inserted == 0) {
-			return Accepted.DUPLICATE;
+	}
+
+	private Timer insertTimer(String result) {
+		return Timer.builder("pulse.sink.insert")
+			.description("Time to store one event, by result (NEW, DUPLICATE, FAILED)")
+			.tag("result", result)
+			.publishPercentiles(0.5, 0.99)
+			.distributionStatisticExpiry(STATISTICS_WINDOW)
+			.register(registry);
+	}
+
+	/**
+	 * How old a new event was when Pulse first stored it: the input for the freshness SLO, and the
+	 * way to tell a backfill (days old) from live activity (minutes old). Only new events count;
+	 * a duplicate's age says nothing about freshness.
+	 * <p>
+	 * Timers ignore negative durations, so events dated in the future (a source's clock is ahead)
+	 * are counted separately instead of disappearing.
+	 */
+	private void recordLateness(PulseEvent event) {
+		Duration lateness = event.lateness();
+		if (lateness.isNegative()) {
+			Counter.builder("pulse.events.future")
+				.description("New events whose source dated them in the future")
+				.tag("source", event.source().name())
+				.register(registry)
+				.increment();
+			return;
 		}
-		log.info("new event {} {} | {} | {}", event.source(), event.occurredAt(), event.title(), event.url());
-		return Accepted.NEW;
+		Timer.builder("pulse.events.lateness")
+			.description("Age of a new event when first stored (ingestedAt - occurredAt)")
+			.tag("source", event.source().name())
+			.publishPercentiles(0.5, 0.99)
+			.distributionStatisticExpiry(STATISTICS_WINDOW)
+			.register(registry)
+			.record(lateness);
 	}
 
 	/** The JDBC driver maps {@code OffsetDateTime} to {@code timestamptz}; it has no mapping for {@code Instant}. */

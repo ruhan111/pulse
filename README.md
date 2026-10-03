@@ -13,11 +13,14 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 3a: five real feeds are polled every 5 minutes and every event is stored once in PostgreSQL._
+_Phase 3b: five real feeds are polled every 5 minutes, every event is stored once in PostgreSQL,
+and what happens is measured._
 
 ```
 RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ──► EventSink ──► JdbcEventSink ──► PostgreSQL
-                                                                   (insert … on conflict do nothing)
+                 │                                                  (insert … on conflict do nothing)
+                 └── RssMetrics                                         └── sink metrics
+                         └──────────────► Micrometer ◄──────────────────┘ ──► /actuator/metrics
 ```
 
 The `events` table's primary key is the `EventId`, so re-polling a feed or restarting the app never
@@ -83,7 +86,7 @@ so breaking one fails the build.
 |-------|------------------------------------------------------------------------|---------|
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
 | 2     | Ingestion: one RSS adapter producing real events                       | built (2a–2d); real-feed run pending |
-| 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | in progress (3a done: PostgreSQL sink) |
+| 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | in progress (3a PostgreSQL sink, 3b metrics done; 3c long run next) |
 | 4     | Multiple sources: more feeds plus a high-volume source (Wikipedia / HN) | planned |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
 | 6     | API: expose trends and the events behind them                          | planned |
@@ -112,6 +115,29 @@ docker compose up -d     # start PostgreSQL first; the app refuses to start with
 ./mvnw spring-boot:run   # applies migrations, polls the feeds in application.yaml, stores new events
 ./mvnw test              # needs Docker running (Testcontainers); tests never touch the internet
 ```
+
+## Metrics and health
+
+While the app runs, two endpoints are available on `localhost:8080` (not reachable from the network):
+
+```bash
+curl localhost:8080/actuator/health                    # UP/DOWN, including the database
+curl localhost:8080/actuator/metrics                   # names of all metrics
+curl "localhost:8080/actuator/metrics/pulse.events.accepted?tag=result:NEW"   # new events so far
+```
+
+| Metric | What it answers |
+|---|---|
+| `pulse.events.accepted` (`source`, `result`) | How many events were new vs. already stored |
+| `pulse.rss.polls` (`feed`, `outcome`) | Poll count and duration per feed, by outcome |
+| `pulse.rss.fetch.failures` (`feed`, `reason`) | Why fetches fail, per feed |
+| `pulse.rss.entries.skipped` (`feed`, `reason`) | Feed entries that couldn't become events |
+| `pulse.sink.insert` (`result`) | Insert latency (p50/p99 via `pulse.sink.insert.percentile`) |
+| `pulse.events.lateness` (`source`) | How old new events are when first stored (freshness) |
+| `pulse.events.future` (`source`) | New events a source dated in the future |
+| `hikaricp.connections.*` | Database connection pool usage |
+
+Counters reset when the app restarts; there is no history yet.
 
 ## Local database
 
