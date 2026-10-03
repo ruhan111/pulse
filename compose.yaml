@@ -1,0 +1,19 @@
+# Local development database. Start with `docker compose up -d`.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      # Development-only credentials; never reuse them outside this machine.
+      POSTGRES_DB: pulse
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD: pulse
+    ports:
+      # Bound to localhost only, so the database isn't reachable from the rest of the network.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # The data lives in a named volume, not in the container: it survives PC restarts and
+      # removing or recreating the container. Only `docker compose down -v` deletes it.
+      - pulse-data:/var/lib/postgresql/data
+
+volumes:
+  pulse-data:

@@ -105,3 +105,38 @@ Requires Java 21.
 ./mvnw spring-boot:run   # polls the feeds in application.yaml and logs new events
 ./mvnw test              # tests never touch the internet
 ```
+
+## Local database
+
+PostgreSQL runs in Docker (Docker Desktop on Windows/macOS). The app doesn't use it yet; that
+arrives in Phase 3a.
+
+```bash
+docker compose up -d     # start Postgres (localhost:5432, database/user/password: pulse)
+docker compose ps        # STATUS should say "Up"
+docker compose stop      # stop it; data is kept
+docker compose down      # remove the container; data is still kept (it lives in a volume)
+docker compose down -v   # ⚠ also deletes the volume, i.e. all data
+```
+
+Connect with any SQL client, or from the container itself:
+
+```bash
+docker compose exec postgres psql -U pulse -d pulse
+```
+
+### Backup and restore
+
+The data survives restarts and container removal, but not `down -v`, a Docker Desktop reset, or a
+major Postgres upgrade. A backup is a plain SQL file. These commands avoid shell redirection
+(`>`), which writes UTF-16 files in Windows PowerShell 5:
+
+```bash
+# backup to backups/pulse.sql (ignored by git)
+docker compose exec postgres pg_dump -U pulse -d pulse -f /tmp/pulse.sql
+docker compose cp postgres:/tmp/pulse.sql backups/pulse.sql
+
+# restore into an empty database
+docker compose cp backups/pulse.sql postgres:/tmp/pulse.sql
+docker compose exec postgres psql -U pulse -d pulse -f /tmp/pulse.sql
+```
