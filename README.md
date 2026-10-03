@@ -113,7 +113,7 @@ arrives in Phase 3a.
 
 ```bash
 docker compose up -d     # start Postgres (localhost:5432, database/user/password: pulse)
-docker compose ps        # STATUS should say "healthy"
+docker compose ps        # STATUS should say "Up"
 docker compose stop      # stop it; data is kept
 docker compose down      # remove the container; data is still kept (it lives in a volume)
 docker compose down -v   # ⚠ also deletes the volume, i.e. all data
