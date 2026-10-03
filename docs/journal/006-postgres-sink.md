@@ -98,6 +98,19 @@ New dependencies: `spring-boot-starter-jdbc` (`JdbcClient`, Hikari pool),
 - **Postgres rounds sub-microsecond timestamps rather than truncating them.**
   `12:00:00.123456789` is stored as `12:00:00.123457`. There's a test for it. It matters only if
   something ever compares a stored timestamp with the in-memory `Instant`.
+- **The first look at real stored data** (on my machine, from feeds polled at 22:01) was through psql
+  inside the compose container: `docker compose exec postgres psql -U pulse -d pulse`. The data
+  was right: Lobsters and Ars Technica rows, with `attributes` stored as JSON, e.g.
+  `{"author": "Dan Goodin", "categories": "AI, Apple, …"}`. Ars's category lists could become
+  topics in Phase 5. Two psql surprises:
+  - **A statement without `;` isn't run.** psql keeps it in a buffer and shows `pulse-#` instead of
+    `pulse=#`. The next line is then joined onto it, which gave a syntax error at the second
+    `select`. `\r` clears the buffer.
+  - **`select * from events` is unreadable** in the default table format. Every column is as wide as
+    its longest value, and summaries and category lists run to hundreds of characters, so each row
+    wrapped across the screen behind a `--More--` pager. Better options: name a few columns,
+    use `\x auto` (one field per line when a row doesn't fit), or start psql with
+    `-P expanded=auto -P format=wrapped`. A GUI client (DBeaver, pgAdmin) is better for browsing.
 
 ## Measurements
 
