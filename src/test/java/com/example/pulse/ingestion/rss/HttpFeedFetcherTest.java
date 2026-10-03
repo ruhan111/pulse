@@ -25,12 +25,12 @@ import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class FeedFetcherTest {
+class HttpFeedFetcherTest {
 
 	private static final byte[] FEED = "<rss version=\"2.0\"><channel><title>t</title></channel></rss>"
 		.getBytes(StandardCharsets.UTF_8);
 
-	private final FeedFetcher fetcher = new FeedFetcher(Duration.ofMillis(500), 1_000);
+	private final HttpFeedFetcher fetcher = new HttpFeedFetcher(Duration.ofMillis(500), 1_000);
 	// Header names are case-insensitive, and the JDK server normalizes them ("User-agent").
 	private final Map<String, String> receivedHeaders =
 			Collections.synchronizedMap(new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
@@ -68,7 +68,7 @@ class FeedFetcherTest {
 
 		fetcher.fetch(url(), CacheValidators.NONE);
 
-		assertThat(receivedHeaders).containsEntry("User-Agent", FeedFetcher.USER_AGENT);
+		assertThat(receivedHeaders).containsEntry("User-Agent", HttpFeedFetcher.USER_AGENT);
 	}
 
 	@Test
