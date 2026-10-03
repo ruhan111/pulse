@@ -28,7 +28,7 @@ the interesting questions are about failure: what breaks what, and what is lost 
   `fetch-deadline` (10s), `max-feed-size` (5MB).
 - **`RssConfiguration`** wires everything and schedules `pollAll` with a *fixed delay*: the next
   round starts a fixed time after the previous one finished, so slow rounds can't overlap.
-- **One shared `Clock` bean** in `PulseApplication`.
+- **One shared `Clock` bean** in `infrastructure.ClockConfiguration`, keeping `PulseApplication` a pure entry point. Components ask for `java.time.Clock` by type, so this doesn't break "nothing depends on infrastructure".
 - **Encapsulation.** Everything in `ingestion.rss` is now package-private except `RssConfiguration`
   and `RssProperties`. `FeedFetcher` became an interface with `HttpFeedFetcher` as the HTTP
   implementation, so the poller can be tested with a fake. A new `ArchitectureTest` rule says nothing
