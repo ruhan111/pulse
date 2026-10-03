@@ -6,6 +6,7 @@ import com.example.pulse.ingestion.rss.FetchResult.NotModified;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -53,6 +54,8 @@ class HttpFeedFetcher implements FeedFetcher {
 		this.maxBytes = maxBytes;
 		this.client = HttpClient.newBuilder()
 			.connectTimeout(deadline)
+			// Honors the standard JVM proxy settings (-Dhttps.proxyHost…); without them it connects directly.
+			.proxy(ProxySelector.getDefault())
 			// Follows 301/302/303/307/308, but never from https to http.
 			.followRedirects(HttpClient.Redirect.NORMAL)
 			.build();

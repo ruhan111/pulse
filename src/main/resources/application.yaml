@@ -4,14 +4,17 @@ spring:
 
 pulse:
   rss:
-    # Off until an EventSink implementation exists (Phase 2d).
-    enabled: false
+    enabled: true
     # Pause between the end of one round of polls and the start of the next.
     poll-interval: 5m
     # Maximum time for one complete fetch, body included.
     fetch-deadline: 10s
     # Larger feeds are rejected while downloading.
     max-feed-size: 5MB
-    # Feed URLs to poll, e.g.:
-    # feeds:
-    #   - https://hnrss.org/frontpage
+    # A mix of tech news, community links and research, in different formats.
+    feeds:
+      - https://hnrss.org/frontpage
+      - https://lobste.rs/rss
+      - https://feeds.arstechnica.com/arstechnica/index
+      - https://feeds.bbci.co.uk/news/technology/rss.xml
+      - https://rss.arxiv.org/rss/cs.AI
