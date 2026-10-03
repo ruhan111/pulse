@@ -48,3 +48,4 @@ What this makes easier or harder, and what's next.
 | 003 | [Fetching feeds over HTTP](003-feed-fetching.md) | 2b    |
 | 004 | [Polling feeds on a schedule](004-rss-polling.md) | 2c    |
 | 005 | [A sink, real feeds, and running it](005-running-it.md) | 2d    |
+| 006 | [Storing events in PostgreSQL](006-postgres-sink.md) | 3a    |
