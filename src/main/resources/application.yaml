@@ -2,6 +2,12 @@ spring:
   application:
     name: pulse
 
+logging:
+  charset:
+    # Write logs as UTF-8 regardless of the OS default (Windows consoles often use cp1252,
+    # which turned em dashes and curly quotes in feed titles into "�").
+    console: UTF-8
+
 pulse:
   rss:
     enabled: true
