@@ -45,3 +45,4 @@ What this makes easier or harder, and what's next.
 | 000 | [Why Pulse, and why start small](000-why-pulse.md) | 0     |
 | 001 | [The domain model and package boundaries](001-domain-model.md) | 1     |
 | 002 | [Mapping RSS entries to events](002-rss-mapping.md) | 2a    |
+| 003 | [Fetching feeds over HTTP](003-feed-fetching.md) | 2b    |
