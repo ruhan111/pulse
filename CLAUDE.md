@@ -70,8 +70,11 @@ record why in the journal.
 - Work is split into phases, and phases into small parts (e.g. 2a, 2b, 2c). Before coding, explain
   the plan and the design decisions; wait for the go-ahead.
 - Each part ends with: passing tests, a journal entry, the README roadmap status updated, then a PR.
-- One PR per part. The user reviews and merges; after a merge, restart the working branch from
-  `origin/main` before the next part.
+- Every piece of work gets its own branch, created from `origin/main` and named after what is being
+  worked on, with `_` instead of spaces: e.g. `phase_2d_logging_sink`, `move_clock_config`. This
+  applies even when a session suggests another branch name.
+- One PR per branch. The user reviews and merges; the next piece of work starts a new branch from
+  the updated `origin/main`.
 - When explaining, cover why a component exists, what problem it solves, what happens when it
   fails, and the alternatives that were rejected.
 
