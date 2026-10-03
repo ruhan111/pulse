@@ -152,14 +152,14 @@ class JdbcEventSinkTest {
 
 	private int countWithId(PulseEvent event) {
 		return jdbc.sql(SqlFile.load("count_events_with_id"))
-			.param("id", event.id().value())
+			.param(JdbcEventSink.PARAM_ID, event.id().value())
 			.query(Integer.class)
 			.single();
 	}
 
 	private Map<String, Object> find(PulseEvent event) {
 		return jdbc.sql(SqlFile.load("find_event_by_id"))
-			.param("id", event.id().value())
+			.param(JdbcEventSink.PARAM_ID, event.id().value())
 			.query((rs, rowNum) -> {
 				Map<String, Object> row = new HashMap<>();
 				for (String column : List.of("source", "channel", "external_id", "type", "title", "url", "summary")) {
@@ -175,7 +175,7 @@ class JdbcEventSinkTest {
 	private Map<String, String> attributes(PulseEvent event) {
 		Map<String, String> attributes = new HashMap<>();
 		jdbc.sql(SqlFile.load("find_event_attributes_by_id"))
-			.param("id", event.id().value())
+			.param(JdbcEventSink.PARAM_ID, event.id().value())
 			.query(rs -> {
 				attributes.put(rs.getString("key"), rs.getString("value"));
 			});

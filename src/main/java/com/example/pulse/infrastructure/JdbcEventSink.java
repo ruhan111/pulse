@@ -24,6 +24,23 @@ import static java.util.Objects.requireNonNull;
 @Component
 class JdbcEventSink implements EventSink {
 
+	/**
+	 * Named parameters of the event SQL files ({@code :id}, {@code :externalId}, …). One spelling,
+	 * so a query file and the Java that binds it can't drift apart.
+	 */
+	static final String PARAM_ID = "id";
+	static final String PARAM_SOURCE = "source";
+	static final String PARAM_CHANNEL = "channel";
+	static final String PARAM_EXTERNAL_ID = "externalId";
+	static final String PARAM_TYPE = "type";
+	static final String PARAM_OCCURRED_AT = "occurredAt";
+	static final String PARAM_INGESTED_AT = "ingestedAt";
+	static final String PARAM_TITLE = "title";
+	static final String PARAM_URL = "url";
+	static final String PARAM_SUMMARY = "summary";
+	static final String PARAM_ATTRIBUTE_KEYS = "attributeKeys";
+	static final String PARAM_ATTRIBUTE_VALUES = "attributeValues";
+
 	private static final Logger log = LoggerFactory.getLogger(JdbcEventSink.class);
 
 	private final JdbcClient jdbc;
@@ -44,18 +61,18 @@ class JdbcEventSink implements EventSink {
 		}
 
 		int inserted = jdbc.sql(insertEventIfAbsent)
-			.param("id", event.id().value())
-			.param("source", event.source().name())
-			.param("channel", event.channel())
-			.param("externalId", event.externalId())
-			.param("type", event.type().name())
-			.param("occurredAt", utc(event.occurredAt()))
-			.param("ingestedAt", utc(event.ingestedAt()))
-			.param("title", event.title())
-			.param("url", event.url().toString())
-			.param("summary", event.summary())
-			.param("attributeKeys", keys)
-			.param("attributeValues", values)
+			.param(PARAM_ID, event.id().value())
+			.param(PARAM_SOURCE, event.source().name())
+			.param(PARAM_CHANNEL, event.channel())
+			.param(PARAM_EXTERNAL_ID, event.externalId())
+			.param(PARAM_TYPE, event.type().name())
+			.param(PARAM_OCCURRED_AT, utc(event.occurredAt()))
+			.param(PARAM_INGESTED_AT, utc(event.ingestedAt()))
+			.param(PARAM_TITLE, event.title())
+			.param(PARAM_URL, event.url().toString())
+			.param(PARAM_SUMMARY, event.summary())
+			.param(PARAM_ATTRIBUTE_KEYS, keys)
+			.param(PARAM_ATTRIBUTE_VALUES, values)
 			.update();
 		if (inserted == 0) {
 			return Accepted.DUPLICATE;
