@@ -126,15 +126,37 @@ docker compose down      # remove the container; data is still kept (it lives in
 docker compose down -v   # ⚠ also deletes the volume, i.e. all data
 ```
 
-Connect with any SQL client, or from the container itself:
+### Looking at the data
+
+Open a SQL prompt inside the container (no local install needed):
 
 ```bash
 docker compose exec postgres psql -U pulse -d pulse
 ```
 
-```sql
-select source, occurred_at, title from events order by occurred_at desc limit 20;
+`events` rows are wide (summaries, attribute lists), so the default table output wraps across the
+screen. This variant shows small results as a table and wide ones as one field per line:
+
+```bash
+docker compose exec postgres psql -U pulse -d pulse -P expanded=auto -P format=wrapped
 ```
+
+Useful queries (end each with `;`, or psql waits for more input and shows `pulse-#`):
+
+```sql
+\dt                                                                       -- list tables
+select count(*) from events;                                              -- how many events
+select channel, count(*) from events group by channel order by 2 desc;    -- events per feed
+select source, occurred_at, title from events order by occurred_at desc limit 20;  -- latest
+select id, filename, dateexecuted from databasechangelog;                 -- applied migrations
+```
+
+`\x` toggles one field per line, `q` leaves the pager (`--More--` / `(END)`), `\q` quits psql. A
+single query also works without the prompt:
+`docker compose exec postgres psql -U pulse -d pulse -c "select count(*) from events"`.
+
+For browsing, any PostgreSQL client (DBeaver, pgAdmin, IntelliJ) connects with `localhost:5432`,
+database, user and password `pulse`.
 
 ### Backup and restore
 
