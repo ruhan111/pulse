@@ -7,7 +7,7 @@ package com.example.pulse.ingestion.rss;
  * @param etag         the {@code ETag} response header, or empty
  * @param lastModified the {@code Last-Modified} response header, or empty
  */
-public record CacheValidators(String etag, String lastModified) {
+record CacheValidators(String etag, String lastModified) {
 
 	public static final CacheValidators NONE = new CacheValidators("", "");
 

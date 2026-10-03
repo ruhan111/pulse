@@ -14,7 +14,7 @@ import java.io.InputStream;
  * DOCTYPEs are rejected. Feeds never need them, and allowing them opens the door to XML external
  * entity (XXE) attacks, where a feed makes the parser read local files or call internal URLs.
  */
-public class RssFeedParser {
+class RssFeedParser {
 
 	public SyndFeed parse(InputStream xml) {
 		SyndFeedInput input = new SyndFeedInput();

@@ -27,7 +27,7 @@ import static java.util.Objects.requireNonNull;
  * Every rule here exists because real feeds are messy: missing guids, missing dates, HTML in
  * titles, relative links. Entries that can't produce a valid event are skipped with a reason.
  */
-public class RssEventMapper {
+class RssEventMapper {
 
 	static final int MAX_SUMMARY_LENGTH = 1_000;
 
@@ -51,17 +51,27 @@ public class RssEventMapper {
 		}
 
 		Instant ingestedAt = clock.instant();
-		return new Mapped(new PulseEvent(
+		try {
+			return new Mapped(toEvent(entry, feedUrl, title, url.get(), ingestedAt));
+		}
+		catch (IllegalArgumentException | NullPointerException ex) {
+			// A backstop: one malformed entry must never break the rest of the feed.
+			return new Skipped(SkipReason.INVALID_ENTRY, ex.getMessage());
+		}
+	}
+
+	private static PulseEvent toEvent(SyndEntry entry, URI feedUrl, String title, URI url, Instant ingestedAt) {
+		return new PulseEvent(
 				Source.RSS,
 				feedUrl.toString(),
-				externalId(entry, url.get()),
+				externalId(entry, url),
 				EventType.PUBLISHED,
 				occurredAt(entry, ingestedAt),
 				ingestedAt,
 				title,
-				url.get(),
+				url,
 				summary(entry),
-				attributes(entry)));
+				attributes(entry));
 	}
 
 	/**

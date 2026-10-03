@@ -28,7 +28,7 @@ Packages are organized by business responsibility, never by technical type (no `
 | Package          | May depend on      | Notes                                         |
 |------------------|--------------------|-----------------------------------------------|
 | `event`          | the JDK only       | Domain core. No Spring, no libraries.         |
-| `ingestion`      | `event`            | One subpackage per source, e.g. `ingestion.rss` |
+| `ingestion`      | `event`            | One subpackage per source, e.g. `ingestion.rss`. Nothing outside depends on it; Spring wires it in. |
 | `trend`          | `event`            |                                               |
 | `api`            | `event`, `trend`   |                                               |
 | `infrastructure` | everything         | Nothing may depend on it.                     |

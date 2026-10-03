@@ -30,6 +30,12 @@ class ArchitectureTest {
 		.because("adapters only publish events into an EventSink");
 
 	@ArchTest
+	static final ArchRule sourceAdaptersAreSelfContained = noClasses()
+		.that().resideOutsideOfPackage("..pulse.ingestion..")
+		.should().dependOnClassesThat().resideInAPackage("..pulse.ingestion..")
+		.because("sources are wired in by Spring and publish into EventSink; nothing calls them directly");
+
+	@ArchTest
 	static final ArchRule trendDoesNotKnowWhereEventsComeFrom = noClasses()
 		.that().resideInAPackage("..pulse.trend..")
 		.should().dependOnClassesThat().resideInAnyPackage("..pulse.ingestion..", "..pulse.api..");

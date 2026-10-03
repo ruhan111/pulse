@@ -10,7 +10,7 @@ import static java.util.Objects.requireNonNull;
  * Skipping is an expected result, not an exception. Bad entries are normal in real feeds, and the
  * caller should be able to count them without try/catch.
  */
-public sealed interface MappedEntry {
+sealed interface MappedEntry {
 
 	record Mapped(PulseEvent event) implements MappedEntry {
 
