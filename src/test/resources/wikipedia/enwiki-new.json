@@ -1,0 +1,37 @@
+{
+	"$schema": "/mediawiki/recentchange/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/RBNS_Al-Sakeer",
+		"request_id": "145d194f-2a51-4b75-aa29-22ba22fa3697",
+		"id": "6434f090-e8c4-4da0-aa6f-1d2981b923a8",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.recentchange",
+		"dt": "2026-10-04T10:34:20.970Z",
+		"topic": "eqiad.mediawiki.recentchange",
+		"partition": 0,
+		"offset": 6581679100
+	},
+	"id": 2076119592,
+	"type": "new",
+	"namespace": 0,
+	"title": "RBNS Al-Sakeer",
+	"title_url": "https://en.wikipedia.org/wiki/RBNS_Al-Sakeer",
+	"comment": "[[WP:AES|←]]Redirected page to [[USS Whirlwind (PC-11)]]",
+	"timestamp": 1791110060,
+	"user": "SmartyPants22",
+	"bot": false,
+	"notify_url": "https://en.wikipedia.org/w/index.php?oldid=1378416740&rcid=2076119592",
+	"minor": false,
+	"patrolled": false,
+	"length": {
+		"new": 35
+	},
+	"revision": {
+		"new": 1378416740
+	},
+	"server_url": "https://en.wikipedia.org",
+	"server_name": "en.wikipedia.org",
+	"server_script_path": "/w",
+	"wiki": "enwiki",
+	"parsedcomment": "<a href=\"/wiki/Wikipedia:AES\" class=\"mw-redirect\" title=\"Wikipedia:AES\">←</a>Redirected page to <a href=\"/wiki/USS_Whirlwind_(PC-11)\" title=\"USS Whirlwind (PC-11)\">USS Whirlwind (PC-11)</a>"
+}

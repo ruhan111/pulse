@@ -1,0 +1,39 @@
+{
+	"$schema": "/mediawiki/recentchange/1.0.0",
+	"meta": {
+		"uri": "https://www.wikidata.org/wiki/Q134985995",
+		"request_id": "b98849d9-7091-4ea3-86fc-a653109e4627",
+		"id": "87dcd035-00b9-4e31-98b1-bfa0ac75405d",
+		"domain": "www.wikidata.org",
+		"stream": "mediawiki.recentchange",
+		"dt": "2026-10-04T10:34:20.629Z",
+		"topic": "eqiad.mediawiki.recentchange",
+		"partition": 0,
+		"offset": 6581679093
+	},
+	"id": 2633206942,
+	"type": "edit",
+	"namespace": 0,
+	"title": "Q134985995",
+	"title_url": "https://www.wikidata.org/wiki/Q134985995",
+	"comment": "/* wbsetclaim-create:2||1 */ [[Property:P6375]]: 1001 NE Atchison Avenue, Topeka, Adding P6375.",
+	"timestamp": 1791110060,
+	"user": "Hofoen",
+	"bot": false,
+	"notify_url": "https://www.wikidata.org/w/index.php?diff=2553003263&oldid=2553003262&rcid=2633206942",
+	"minor": false,
+	"patrolled": true,
+	"length": {
+		"old": 10665,
+		"new": 12167
+	},
+	"revision": {
+		"old": 2553003262,
+		"new": 2553003263
+	},
+	"server_url": "https://www.wikidata.org",
+	"server_name": "www.wikidata.org",
+	"server_script_path": "/w",
+	"wiki": "wikidatawiki",
+	"parsedcomment": "‎<span dir=\"auto\"><span class=\"autocomment\">Created claim: </span></span> <a href=\"/wiki/Property:P6375\" title=\"‎street address‎ | ‎full street address where subject is located. Include building number, city/locality, post code, but not country; use also P669 if the street has its own separate item‎\"><span class=\"wb-itemlink\"><span class=\"wb-itemlink-label\" lang=\"en\" dir=\"ltr\">street address</span> <span class=\"wb-itemlink-id\">(P6375)</span></span></a>: 1001 NE Atchison Avenue, Topeka, Adding P6375."
+}

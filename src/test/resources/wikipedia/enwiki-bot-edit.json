@@ -1,0 +1,38 @@
+{
+	"$schema": "/mediawiki/recentchange/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Judith_Uitermark",
+		"request_id": "85bb4b4b-0049-4a72-bda1-611b4174cf02",
+		"id": "6667dbcf-e138-4cff-940f-75108f00ad71",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.recentchange",
+		"dt": "2026-10-04T10:34:21.488Z",
+		"topic": "eqiad.mediawiki.recentchange",
+		"partition": 0,
+		"offset": 6581679114
+	},
+	"id": 2076119593,
+	"type": "edit",
+	"namespace": 0,
+	"title": "Judith Uitermark",
+	"title_url": "https://en.wikipedia.org/wiki/Judith_Uitermark",
+	"comment": "/* top */ Updating deprecated parameters + [[WP:AWB/GF|AWB GenFixes]] - [[Wikipedia:Bots/Requests for approval/PhuzBot 15|PhuzBot 15]]",
+	"timestamp": 1791110058,
+	"user": "PhuzBot",
+	"bot": true,
+	"notify_url": "https://en.wikipedia.org/w/index.php?diff=1378416736&oldid=1361948292",
+	"minor": true,
+	"length": {
+		"old": 12382,
+		"new": 12382
+	},
+	"revision": {
+		"old": 1361948292,
+		"new": 1378416736
+	},
+	"server_url": "https://en.wikipedia.org",
+	"server_name": "en.wikipedia.org",
+	"server_script_path": "/w",
+	"wiki": "enwiki",
+	"parsedcomment": "<span class=\"autocomment\"><a href=\"/wiki/Judith_Uitermark#top\" title=\"Judith Uitermark\">→<bdi dir=\"ltr\">top</bdi></a>: </span> Updating deprecated parameters + <a href=\"/wiki/Wikipedia:AWB/GF\" class=\"mw-redirect\" title=\"Wikipedia:AWB/GF\">AWB GenFixes</a> - <a href=\"/wiki/Wikipedia:Bots/Requests_for_approval/PhuzBot_15\" title=\"Wikipedia:Bots/Requests for approval/PhuzBot 15\">PhuzBot 15</a>"
+}
