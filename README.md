@@ -13,7 +13,7 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 3b: five real feeds are polled every 5 minutes, every event is stored once in PostgreSQL,
+_Phase 3 done: five real feeds are polled every 5 minutes, every event is stored once in PostgreSQL,
 and what happens is measured._
 
 ```
@@ -85,9 +85,9 @@ so breaking one fails the build.
 | Phase | Goal                                                                   | Status  |
 |-------|------------------------------------------------------------------------|---------|
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
-| 2     | Ingestion: one RSS adapter producing real events                       | built (2a–2d); real-feed run pending |
-| 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | in progress (3a PostgreSQL sink, 3b metrics done; 3c long run next) |
-| 4     | Multiple sources: more feeds plus a high-volume source (Wikipedia / HN) | planned |
+| 2     | Ingestion: one RSS adapter producing real events                       | done    |
+| 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | done (RSS gives ≈ 12 new events/hour, see journal 008) |
+| 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | next    |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
 | 6     | API: expose trends and the events behind them                          | planned |
 | 7     | Load testing: synthetic generator, measure against SLOs                | planned |
