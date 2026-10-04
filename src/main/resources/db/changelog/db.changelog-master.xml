@@ -7,5 +7,6 @@
 			https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
 	<include file="changes/001-create-events-table.xml" relativeToChangelogFile="true"/>
+	<include file="changes/002-create-checkpoints-table.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

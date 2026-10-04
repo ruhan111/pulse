@@ -38,6 +38,8 @@ These rules are enforced by `ArchitectureTest` (ArchUnit). Change a rule only de
 record why in the journal.
 
 - Ingestion publishes into the `EventSink` port and never knows what's behind it.
+- Streaming sources keep their resume position in the `CheckpointStore` port (opaque per-stream
+  string, saved only once everything before it was published).
 - `EventId` is derived from `(source, externalId)`, so the same item always gets the same id.
   `externalId` must be stable across polls.
 - Schema changes are Liquibase XML changesets: one file per change in
