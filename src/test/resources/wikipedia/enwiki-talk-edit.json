@@ -1,0 +1,38 @@
+{
+	"$schema": "/mediawiki/recentchange/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/User:Dahawk04/Reftool-Doc",
+		"request_id": "b84bd20d-9c49-4505-98b7-c24705d092b4",
+		"id": "cba87806-4297-4170-956f-4c5dad7f5378",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.recentchange",
+		"dt": "2026-10-04T10:34:21.984Z",
+		"topic": "eqiad.mediawiki.recentchange",
+		"partition": 0,
+		"offset": 6581679125
+	},
+	"id": 2076119594,
+	"type": "edit",
+	"namespace": 2,
+	"title": "User:Dahawk04/Reftool-Doc",
+	"title_url": "https://en.wikipedia.org/wiki/User:Dahawk04/Reftool-Doc",
+	"comment": "/* Duplicate-Ref Cleaner */ added [[Template:Infobox Wikipedia user script]]",
+	"timestamp": 1791110061,
+	"user": "Rotideypoc41352",
+	"bot": false,
+	"notify_url": "https://en.wikipedia.org/w/index.php?diff=1378416742&oldid=1301217171",
+	"minor": false,
+	"length": {
+		"old": 2471,
+		"new": 2960
+	},
+	"revision": {
+		"old": 1301217171,
+		"new": 1378416742
+	},
+	"server_url": "https://en.wikipedia.org",
+	"server_name": "en.wikipedia.org",
+	"server_script_path": "/w",
+	"wiki": "enwiki",
+	"parsedcomment": "<span class=\"autocomment\"><a href=\"/wiki/User:Dahawk04/Reftool-Doc#Duplicate-Ref_Cleaner\" title=\"User:Dahawk04/Reftool-Doc\">→<bdi dir=\"ltr\">Duplicate-Ref Cleaner</bdi></a>: </span> added <a href=\"/wiki/Template:Infobox_Wikipedia_user_script\" title=\"Template:Infobox Wikipedia user script\">Template:Infobox Wikipedia user script</a>"
+}

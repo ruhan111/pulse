@@ -51,3 +51,4 @@ What this makes easier or harder, and what's next.
 | 006 | [Storing events in PostgreSQL](006-postgres-sink.md) | 3a    |
 | 007 | [Metrics](007-metrics.md) | 3b    |
 | 008 | [How much RSS actually produces](008-rss-volume.md) | 3c    |
+| 009 | [Mapping Wikipedia recent changes](009-wikipedia-mapping.md) | 4a    |

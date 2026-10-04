@@ -66,6 +66,11 @@
 			<artifactId>jsoup</artifactId>
 			<version>1.21.2</version>
 		</dependency>
+		<dependency>
+			<!-- Wikipedia's stream is JSON. Already present via the web starter; declared because ingestion uses it directly. -->
+			<groupId>tools.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

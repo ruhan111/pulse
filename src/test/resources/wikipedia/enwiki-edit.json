@@ -1,0 +1,38 @@
+{
+	"$schema": "/mediawiki/recentchange/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Tirhut_division",
+		"request_id": "18cba163-1e63-4fd5-9331-c8ecc4779ab0",
+		"id": "9c11d377-b9ef-4e97-87f0-c2573bb88caf",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.recentchange",
+		"dt": "2026-10-04T10:34:46.965Z",
+		"topic": "eqiad.mediawiki.recentchange",
+		"partition": 0,
+		"offset": 6581679869
+	},
+	"id": 2076119676,
+	"type": "edit",
+	"namespace": 0,
+	"title": "Tirhut division",
+	"title_url": "https://en.wikipedia.org/wiki/Tirhut_division",
+	"comment": "Disambiguating links to [[Ramnagar]] (link changed to [[Ramnagar, West Champaran]]) using [[User:Qwertyytrewqqwerty/DisamAssist|DisamAssist]].",
+	"timestamp": 1791110083,
+	"user": "Rodw",
+	"bot": false,
+	"notify_url": "https://en.wikipedia.org/w/index.php?diff=1378416775&oldid=1378416676",
+	"minor": true,
+	"length": {
+		"old": 25250,
+		"new": 25275
+	},
+	"revision": {
+		"old": 1378416676,
+		"new": 1378416775
+	},
+	"server_url": "https://en.wikipedia.org",
+	"server_name": "en.wikipedia.org",
+	"server_script_path": "/w",
+	"wiki": "enwiki",
+	"parsedcomment": "Disambiguating links to <a href=\"/wiki/Ramnagar\" title=\"Ramnagar\">Ramnagar</a> (link changed to <a href=\"/wiki/Ramnagar,_West_Champaran\" title=\"Ramnagar, West Champaran\">Ramnagar, West Champaran</a>) using <a href=\"/wiki/User:Qwertyytrewqqwerty/DisamAssist\" title=\"User:Qwertyytrewqqwerty/DisamAssist\">DisamAssist</a>."
+}

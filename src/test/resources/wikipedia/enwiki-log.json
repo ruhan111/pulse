@@ -1,0 +1,35 @@
+{
+	"$schema": "/mediawiki/recentchange/1.0.0",
+	"meta": {
+		"uri": "https://auth.wikimedia.org/enwiki/wiki/User:AnoSaPalagayNiyo",
+		"request_id": "19a83bb3-0d37-4728-bd3a-612c9b9af9fc",
+		"id": "5c3a750e-e5bf-4d27-98a3-7eb44a1fe8fe",
+		"domain": "auth.wikimedia.org",
+		"stream": "mediawiki.recentchange",
+		"dt": "2026-10-04T10:34:22.807Z",
+		"topic": "eqiad.mediawiki.recentchange",
+		"partition": 0,
+		"offset": 6581679147
+	},
+	"id": 2076119597,
+	"type": "log",
+	"namespace": 2,
+	"title": "User:AnoSaPalagayNiyo",
+	"title_url": "https://en.wikipedia.org/wiki/User:AnoSaPalagayNiyo",
+	"comment": "",
+	"timestamp": 1791110062,
+	"user": "AnoSaPalagayNiyo",
+	"bot": false,
+	"log_id": 185966732,
+	"log_type": "newusers",
+	"log_action": "create",
+	"log_params": {
+		"userid": 56052649
+	},
+	"log_action_comment": "New user account",
+	"server_url": "https://auth.wikimedia.org",
+	"server_name": "auth.wikimedia.org",
+	"server_script_path": "/enwiki/w",
+	"wiki": "enwiki",
+	"parsedcomment": ""
+}

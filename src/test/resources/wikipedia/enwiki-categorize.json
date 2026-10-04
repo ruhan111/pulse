@@ -1,0 +1,29 @@
+{
+	"$schema": "/mediawiki/recentchange/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Category:Wikipedia_scripts",
+		"request_id": "b84bd20d-9c49-4505-98b7-c24705d092b4",
+		"id": "40213cdf-4499-4153-bd8c-4077655f5192",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.recentchange",
+		"dt": "2026-10-04T10:34:22.414Z",
+		"topic": "eqiad.mediawiki.recentchange",
+		"partition": 0,
+		"offset": 6581679137
+	},
+	"id": 2076119595,
+	"type": "categorize",
+	"namespace": 14,
+	"title": "Category:Wikipedia scripts",
+	"title_url": "https://en.wikipedia.org/wiki/Category:Wikipedia_scripts",
+	"comment": "[[:User:Dahawk04/Reftool-Doc]] added to category",
+	"timestamp": 1791110061,
+	"user": "Rotideypoc41352",
+	"bot": false,
+	"notify_url": "https://en.wikipedia.org/w/index.php?diff=1378416742&oldid=1301217171",
+	"server_url": "https://en.wikipedia.org",
+	"server_name": "en.wikipedia.org",
+	"server_script_path": "/w",
+	"wiki": "enwiki",
+	"parsedcomment": "<a href=\"/wiki/User:Dahawk04/Reftool-Doc\" title=\"User:Dahawk04/Reftool-Doc\">User:Dahawk04/Reftool-Doc</a> added to category"
+}
