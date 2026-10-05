@@ -48,6 +48,7 @@ RSS feeds ──► RssAdapter ──► PulseEvent ──► EventSink ──�
 | `Mention`    | One occurrence of a topic in one event: the unit that gets counted             |
 | `Trend`      | A topic whose activity is unusually high compared with its baseline            |
 | `EventSink`  | Port the ingestion side publishes into, so the rest of the system can change without touching sources |
+| `CheckpointStore` | Port where a streaming source keeps its resume position, so restarts and reconnects continue where they stopped |
 
 ## Package structure
 
@@ -56,7 +57,7 @@ toward `event`:
 
 ```
 com.example.pulse
-├── event/            domain core: PulseEvent, EventId, Source, EventType, EventSink (port)
+├── event/            domain core: PulseEvent, EventId, Source, EventType; ports EventSink, CheckpointStore
 ├── ingestion/        source adapters (rss/, hackernews/, …) → publish into EventSink
 ├── trend/            Topic, Mention, MentionExtractor; later counting, baselines, detection
 ├── api/              HTTP interface
@@ -87,7 +88,7 @@ so breaking one fails the build.
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
 | 2     | Ingestion: one RSS adapter producing real events                       | done    |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | done (RSS gives ≈ 12 new events/hour, see journal 008) |
-| 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | in progress (4a: mapping done, ≈ 2,900 enwiki edits/hour in a first sample, see journal 009) |
+| 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | in progress (4a mapping, 4b stream client with resumable checkpoints done; 4c wiring and a long run next; see journals 009, 010) |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
 | 6     | API: expose trends and the events behind them                          | planned |
 | 7     | Load testing: synthetic generator, measure against SLOs                | planned |
