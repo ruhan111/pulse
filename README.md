@@ -92,7 +92,7 @@ so breaking one fails the build.
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
 | 2     | Ingestion: one RSS adapter producing real events                       | done    |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | done (RSS gives ≈ 12 new events/hour, see journal 008) |
-| 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | in progress (4a mapping, 4b stream client with resumable checkpoints done; 4c wiring and a long run next; see journals 009, 010) |
+| 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | done for Wikipedia (≈ 4,700 events/hour, no gaps across restarts and database outages; see journals 009–011); proposed: close here |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
 | 6     | API: expose trends and the events behind them                          | planned |
 | 7     | Load testing: synthetic generator, measure against SLOs                | planned |
