@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * The sink's metrics. Each test builds its own sink with a fresh registry, so counts start at zero
  * no matter what else ran against the shared database.
  */
-@SpringBootTest(properties = "pulse.rss.enabled=false")
+@SpringBootTest(properties = { "pulse.rss.enabled=false", "pulse.wikipedia.enabled=false" })
 class JdbcEventSinkMetricsTest {
 
 	private static final Instant OCCURRED = Instant.parse("2026-10-03T12:00:00Z");

@@ -51,6 +51,7 @@ class RecentChangeConsumer {
 	private final RecentChangeMapper mapper;
 	private final EventSink sink;
 	private final CheckpointStore checkpoints;
+	private final WikipediaMetrics metrics;
 	private final Clock clock;
 	private final Duration checkpointInterval;
 	private final Duration initialBackoff;
@@ -60,12 +61,13 @@ class RecentChangeConsumer {
 	private Thread thread;
 
 	RecentChangeConsumer(EventStreamClient client, RecentChangeMapper mapper, EventSink sink,
-			CheckpointStore checkpoints, Clock clock, Duration checkpointInterval, Duration initialBackoff,
-			Duration maxBackoff) {
+			CheckpointStore checkpoints, WikipediaMetrics metrics, Clock clock, Duration checkpointInterval,
+			Duration initialBackoff, Duration maxBackoff) {
 		this.client = requireNonNull(client, "client");
 		this.mapper = requireNonNull(mapper, "mapper");
 		this.sink = requireNonNull(sink, "sink");
 		this.checkpoints = requireNonNull(checkpoints, "checkpoints");
+		this.metrics = requireNonNull(metrics, "metrics");
 		this.clock = requireNonNull(clock, "clock");
 		this.checkpointInterval = requireNonNull(checkpointInterval, "checkpointInterval");
 		this.initialBackoff = requireNonNull(initialBackoff, "initialBackoff");
@@ -95,6 +97,10 @@ class RecentChangeConsumer {
 			log.warn("wikipedia stream did not stop within {}", STOP_TIMEOUT);
 		}
 		thread = null;
+	}
+
+	synchronized boolean isRunning() {
+		return thread != null;
 	}
 
 	private void run() {
@@ -138,7 +144,9 @@ class RecentChangeConsumer {
 		log.info("wikipedia stream connecting, {}", position.isEmpty() ? "starting from now" : "resuming");
 
 		Connection connection = new Connection(position);
+		long start = System.nanoTime();
 		Disconnect disconnect = client.read(ResumePosition.rewind(position, REPLAY_MARGIN), connection::handle);
+		metrics.disconnected(disconnect.reason(), Duration.ofNanos(System.nanoTime() - start));
 		if (!running) {
 			// Stopping interrupted the read. Clear the flag so the final checkpoint can still be saved.
 			Thread.interrupted();
@@ -188,8 +196,12 @@ class RecentChangeConsumer {
 
 		/** Throws if publishing or saving fails, which ends the connection before this event counts. */
 		void handle(ServerSentEvent event) {
+			metrics.received();
 			switch (mapper.map(event.data())) {
-				case Skipped skip -> skipped.merge(skip.reason(), 1, Integer::sum);
+				case Skipped skip -> {
+					skipped.merge(skip.reason(), 1, Integer::sum);
+					metrics.skipped(skip.reason());
+				}
 				case Mapped mapped -> {
 					if (sink.accept(mapped.event()) == Accepted.NEW) {
 						newEvents++;
