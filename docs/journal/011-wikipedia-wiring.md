@@ -31,6 +31,21 @@ outage. 010 left one question open: how fast does Pulse catch up after being dow
     `source=WIKIPEDIA`).
   - **Every meter is registered at 0 on startup.** This fixes the 404 confusion from 008 for these
     metrics: Actuator answers 404 for a tag value until its counter exists.
+- **One tally, read by the metrics (changed during review).** The first version called
+  `metrics.received()` and `metrics.skipped()` from the reading loop, next to a second set of
+  counters the consumer kept for its disconnect log line: the same facts counted twice, and metric
+  calls mixed into the logic. Now:
+  - The consumer counts in exactly one place, **`StreamTally`**: `skipped(reason)` or
+    `accepted(NEW/DUPLICATE)`, one line per change in `handle()`.
+  - `WikipediaMetrics` registers **`FunctionCounter`s that read the tally when metrics are
+    scraped**. The loop contains no metrics code, and the metrics are always current.
+  - The disconnect log line is the difference of two tally snapshots, taken before and after the
+    connection.
+  - The connection timer is still recorded explicitly, once per connection, at the natural end of
+    a unit of work, like `RssMetrics.polled(result)` after a poll.
+  - **Small change in meaning:** `received` now counts changes *handled* (skipped, or accepted by
+    the sink). A change whose publish failed is no longer counted. It arrives again after the
+    reconnect and is counted then.
 - **Tests stay off the internet.** Five tests start the whole app and load the real
   `application.yaml`, which now enables the stream. They set `pulse.wikipedia.enabled=false`, as
   they already did for RSS.
@@ -46,6 +61,17 @@ outage. 010 left one question open: how fast does Pulse catch up after being dow
   classpath, so tests would stop checking the shipped configuration. Explicit properties are
   clearer.
 - **Making backoff configurable.** That's configuration nobody needs yet.
+- **Pushing the tally to the metrics at each checkpoint tick** (every 5 s and on disconnect). This
+  was the plan agreed in review. On closer look the tick only runs when an event arrives, so on a
+  quiet stream the metrics would lag by up to the 30 s idle timeout, and a test that goes silent
+  after its data would never see them. Reading the tally at scrape time has no lag and needs no
+  reporting step.
+- **Counting decorators around the mapper, sink and client.** These would leave no metrics code in
+  the consumer at all, but cost three wrapper classes and make it invisible where a number comes
+  from.
+- **`@Counted`/`@Timed` annotations.** They need Spring proxies around a deliberately Spring-free
+  class, don't work on calls within the class itself, and can't turn a returned `Skipped(reason)`
+  into a tag.
 - **A lag gauge** (how far behind the reader is). It would need the stream position as a time,
   i.e. parsing ids outside `ResumePosition`. `pulse.events.lateness` already shows it for kept
   events, and it did show the outage below (315 s).
@@ -67,7 +93,8 @@ outage. 010 left one question open: how fast does Pulse catch up after being dow
 |---|---|
 | No checkpoint save when a connection ends | the end-to-end test: the restart sent no `Last-Event-ID` |
 | The lifecycle bean removed | the end-to-end test (nothing stored) and `startsTheStreamWithTheContextAndStopsItOnClose` |
-| Skip counters created on first use instead of at startup | the end-to-end test (404 for `MALFORMED`) and both metric tests in `RecentChangeConsumerTest` |
+| Skip counters created on first use instead of at startup (first version, before the tally) | the end-to-end test (404 for `MALFORMED`) and both metric tests in `RecentChangeConsumerTest` |
+| `handle()` no longer counts skipped changes in the tally | 4 tests: the end-to-end test, `metricsAreCurrentWhileTheConnectionIsStillOpen`, `countsWhatItReceivesSkipsAndHowTheConnectionEnded`, and `publishesKeptEvents…` (it uses the tally's count of handled events) |
 
 - **A real run in the sandbox.**
   - Setup: the packaged jar, `compose.yaml` PostgreSQL, the live stream through the sandbox proxy,
@@ -160,7 +187,8 @@ bytes per row (average `pg_column_size` 276 bytes, average summary 30 characters
 | Sun 11:05, 60 s | 47 | 1.0 | 010 |
 | Tue 20:33, 20 min | 38.8 | 1.31 | this entry |
 
-**Test suite:** 132 tests (9 new), all passing, `./mvnw clean test`.
+**Test suite:** 135 tests (12 new), all passing, `./mvnw clean test`. The real run above used the
+first version of the metrics; the tally refactor changes how they're counted, not what they count.
 
 ## Consequences / open questions
 

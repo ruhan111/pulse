@@ -33,8 +33,9 @@ public class WikipediaConfiguration {
 			CheckpointStore checkpoints, Clock clock, MeterRegistry registry) {
 		EventStreamClient client = new EventStreamClient(properties.streamUrl(), properties.connectTimeout(),
 				properties.idleTimeout());
-		return new RecentChangeConsumer(client, new RecentChangeMapper(clock), sink, checkpoints,
-				new WikipediaMetrics(registry), clock, properties.checkpointInterval(), INITIAL_BACKOFF,
+		StreamTally tally = new StreamTally();
+		return new RecentChangeConsumer(client, new RecentChangeMapper(clock), sink, checkpoints, tally,
+				new WikipediaMetrics(registry, tally), clock, properties.checkpointInterval(), INITIAL_BACKOFF,
 				MAX_BACKOFF);
 	}
 

@@ -41,7 +41,8 @@ class RecentChangeConsumerTest {
 	private final RecordingSink sink = new RecordingSink();
 	private final InMemoryCheckpoints checkpoints = new InMemoryCheckpoints();
 	private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
-	private final WikipediaMetrics metrics = new WikipediaMetrics(registry);
+	private final StreamTally tally = new StreamTally();
+	private final WikipediaMetrics metrics = new WikipediaMetrics(registry, tally);
 
 	RecentChangeConsumerTest() throws IOException {
 	}
@@ -55,7 +56,7 @@ class RecentChangeConsumerTest {
 	void publishesKeptEventsAndSavesTheLastIdWhenTheConnectionEnds() {
 		server.then(events(CAPTURE));
 
-		int handled = consumer(Duration.ofHours(1)).connectOnce();
+		long handled = consumer(Duration.ofHours(1)).connectOnce();
 
 		assertThat(handled).isEqualTo(120);
 		assertThat(sink.externalIds()).containsExactly("enwiki:1378416740", "enwiki:1378416745");
@@ -69,13 +70,30 @@ class RecentChangeConsumerTest {
 
 		consumer(Duration.ofHours(1)).connectOnce();
 
-		assertThat(registry.get("pulse.wikipedia.changes.received").counter().count()).isEqualTo(120);
+		assertThat(registry.get("pulse.wikipedia.changes.received").functionCounter().count()).isEqualTo(120);
 		assertThat(skipped(SkipReason.OTHER_WIKI)).isEqualTo(105);
 		assertThat(skipped(SkipReason.NOT_AN_EDIT)).isEqualTo(10);
 		assertThat(skipped(SkipReason.BOT)).isEqualTo(2);
 		assertThat(skipped(SkipReason.NOT_ARTICLE)).isEqualTo(1);
 		assertThat(skipped(SkipReason.MALFORMED)).isZero();
 		assertThat(registry.get("pulse.wikipedia.connections").tag("reason", "ENDED").timer().count()).isEqualTo(1);
+	}
+
+	@Test
+	void metricsAreCurrentWhileTheConnectionIsStillOpen() throws InterruptedException {
+		// The server goes silent after the capture, so nothing ends the connection or triggers a report.
+		server.then(eventsThenSilence(CAPTURE));
+		RecentChangeConsumer consumer = consumer(Duration.ofHours(1));
+
+		consumer.start();
+		awaitEvents(2);
+		double received = registry.get("pulse.wikipedia.changes.received").functionCounter().count();
+		double otherWiki = registry.get("pulse.wikipedia.changes.skipped").tag("reason", "OTHER_WIKI")
+			.functionCounter().count();
+		consumer.stop();
+
+		assertThat(received).isEqualTo(120);
+		assertThat(otherWiki).isEqualTo(105);
 	}
 
 	@Test
@@ -169,12 +187,12 @@ class RecentChangeConsumerTest {
 
 	private RecentChangeConsumer consumer(Duration checkpointInterval) {
 		EventStreamClient client = new EventStreamClient(server.url(), Duration.ofSeconds(5), Duration.ofMinutes(1));
-		return new RecentChangeConsumer(client, new RecentChangeMapper(CLOCK), sink, checkpoints, metrics, CLOCK,
-				checkpointInterval, Duration.ofMillis(10), Duration.ofMillis(100));
+		return new RecentChangeConsumer(client, new RecentChangeMapper(CLOCK), sink, checkpoints, tally, metrics,
+				CLOCK, checkpointInterval, Duration.ofMillis(10), Duration.ofMillis(100));
 	}
 
 	private double skipped(SkipReason reason) {
-		return registry.get("pulse.wikipedia.changes.skipped").tag("reason", reason.name()).counter().count();
+		return registry.get("pulse.wikipedia.changes.skipped").tag("reason", reason.name()).functionCounter().count();
 	}
 
 	private void awaitEvents(int count) throws InterruptedException {
