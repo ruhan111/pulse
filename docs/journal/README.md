@@ -53,3 +53,4 @@ What this makes easier or harder, and what's next.
 | 008 | [How much RSS actually produces](008-rss-volume.md) | 3c    |
 | 009 | [Mapping Wikipedia recent changes](009-wikipedia-mapping.md) | 4a    |
 | 010 | [Reading the Wikipedia stream](010-wikipedia-stream.md) | 4b    |
+| 011 | [Running the Wikipedia stream in the app](011-wikipedia-wiring.md) | 4c    |

@@ -13,14 +13,18 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 3 done: five real feeds are polled every 5 minutes, every event is stored once in PostgreSQL,
-and what happens is measured._
+_Phase 4c: five RSS feeds are polled every 5 minutes, and English Wikipedia's live edit stream is
+read continuously. Every event is stored once in PostgreSQL, and what happens is measured._
 
 ```
-RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ──► EventSink ──► JdbcEventSink ──► PostgreSQL
-                 │                                                  (insert … on conflict do nothing)
-                 └── RssMetrics                                         └── sink metrics
-                         └──────────────► Micrometer ◄──────────────────┘ ──► /actuator/metrics
+RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ──┐
+  (scheduled, every 5 min)                          ├──► EventSink ──► JdbcEventSink ──► PostgreSQL
+Wikimedia ──► RecentChangeConsumer ──► SSE ─► map ──┘                  (insert … on conflict do nothing)
+  stream       (own thread, reconnects)                                       ▲
+                     └──► CheckpointStore ──► JdbcCheckpointStore ────────────┘
+                          (resume position, so a restart continues where it stopped)
+
+RssMetrics, WikipediaMetrics, sink metrics ──► Micrometer ──► /actuator/metrics
 ```
 
 The `events` table's primary key is the `EventId`, so re-polling a feed or restarting the app never
@@ -88,7 +92,7 @@ so breaking one fails the build.
 | 1     | Domain: `PulseEvent`, `Source`, `EventType`, `Topic`, `Mention`        | done    |
 | 2     | Ingestion: one RSS adapter producing real events                       | done    |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | done (RSS gives ≈ 12 new events/hour, see journal 008) |
-| 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | in progress (4a mapping, 4b stream client with resumable checkpoints done; 4c wiring and a long run next; see journals 009, 010) |
+| 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | done for Wikipedia (≈ 4,700 events/hour, no gaps across restarts and database outages; see journals 009–011); proposed: close here |
 | 5     | Trend detection: per-mention counts, baselines, spike detection       | planned |
 | 6     | API: expose trends and the events behind them                          | planned |
 | 7     | Load testing: synthetic generator, measure against SLOs                | planned |
@@ -113,7 +117,7 @@ Requires Java 21 and Docker.
 
 ```bash
 docker compose up -d     # start PostgreSQL first; the app refuses to start without it
-./mvnw spring-boot:run   # applies migrations, polls the feeds in application.yaml, stores new events
+./mvnw spring-boot:run   # applies migrations, polls the feeds and reads the Wikipedia stream, stores new events
 ./mvnw test              # needs Docker running (Testcontainers); tests never touch the internet
 ```
 
@@ -136,6 +140,9 @@ curl "localhost:8080/actuator/metrics/pulse.events.accepted?tag=result:NEW"   # 
 | `pulse.sink.insert` (`result`) | Insert latency (p50/p99 via `pulse.sink.insert.percentile`) |
 | `pulse.events.lateness` (`source`) | How old new events are when first stored (freshness) |
 | `pulse.events.future` (`source`) | New events a source dated in the future |
+| `pulse.wikipedia.changes.received` | Changes received from the stream, all wikis, before filtering |
+| `pulse.wikipedia.changes.skipped` (`reason`) | Received changes that did not become events (other wiki, bot, …) |
+| `pulse.wikipedia.connections` (`reason`) | Stream connections by why they ended, and how long each lasted |
 | `hikaricp.connections.*` | Database connection pool usage |
 
 Counters reset when the app restarts; there is no history yet.

@@ -2,18 +2,16 @@ package com.example.pulse.ingestion.wikipedia;
 
 import com.example.pulse.event.CheckpointStore;
 import com.example.pulse.event.EventSink;
-import com.example.pulse.event.EventSink.Accepted;
 import com.example.pulse.ingestion.wikipedia.Disconnect.Reason;
 import com.example.pulse.ingestion.wikipedia.MappedChange.Mapped;
 import com.example.pulse.ingestion.wikipedia.MappedChange.Skipped;
+import com.example.pulse.ingestion.wikipedia.StreamTally.Snapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.EnumMap;
-import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
@@ -51,6 +49,8 @@ class RecentChangeConsumer {
 	private final RecentChangeMapper mapper;
 	private final EventSink sink;
 	private final CheckpointStore checkpoints;
+	private final StreamTally tally;
+	private final WikipediaMetrics metrics;
 	private final Clock clock;
 	private final Duration checkpointInterval;
 	private final Duration initialBackoff;
@@ -60,12 +60,14 @@ class RecentChangeConsumer {
 	private Thread thread;
 
 	RecentChangeConsumer(EventStreamClient client, RecentChangeMapper mapper, EventSink sink,
-			CheckpointStore checkpoints, Clock clock, Duration checkpointInterval, Duration initialBackoff,
-			Duration maxBackoff) {
+			CheckpointStore checkpoints, StreamTally tally, WikipediaMetrics metrics, Clock clock,
+			Duration checkpointInterval, Duration initialBackoff, Duration maxBackoff) {
 		this.client = requireNonNull(client, "client");
 		this.mapper = requireNonNull(mapper, "mapper");
 		this.sink = requireNonNull(sink, "sink");
 		this.checkpoints = requireNonNull(checkpoints, "checkpoints");
+		this.tally = requireNonNull(tally, "tally");
+		this.metrics = requireNonNull(metrics, "metrics");
 		this.clock = requireNonNull(clock, "clock");
 		this.checkpointInterval = requireNonNull(checkpointInterval, "checkpointInterval");
 		this.initialBackoff = requireNonNull(initialBackoff, "initialBackoff");
@@ -97,10 +99,14 @@ class RecentChangeConsumer {
 		thread = null;
 	}
 
+	synchronized boolean isRunning() {
+		return thread != null;
+	}
+
 	private void run() {
 		Duration backoff = initialBackoff;
 		while (running) {
-			int handled;
+			long handled;
 			try {
 				handled = connectOnce();
 			}
@@ -126,7 +132,7 @@ class RecentChangeConsumer {
 	}
 
 	/** One connection, from loading the checkpoint to the disconnect. Returns the number of events handled. */
-	int connectOnce() {
+	long connectOnce() {
 		String position;
 		try {
 			position = checkpoints.load(STREAM).orElse("");
@@ -138,7 +144,11 @@ class RecentChangeConsumer {
 		log.info("wikipedia stream connecting, {}", position.isEmpty() ? "starting from now" : "resuming");
 
 		Connection connection = new Connection(position);
+		Snapshot before = tally.snapshot();
+		long start = System.nanoTime();
 		Disconnect disconnect = client.read(ResumePosition.rewind(position, REPLAY_MARGIN), connection::handle);
+		metrics.disconnected(disconnect.reason(), Duration.ofNanos(System.nanoTime() - start));
+		Snapshot handled = tally.snapshot().minus(before);
 		if (!running) {
 			// Stopping interrupted the read. Clear the flag so the final checkpoint can still be saved.
 			Thread.interrupted();
@@ -151,8 +161,21 @@ class RecentChangeConsumer {
 		else {
 			connection.saveCheckpoint();
 		}
-		connection.log(disconnect);
-		return connection.handled;
+		log(disconnect, handled);
+		return handled.received();
+	}
+
+	private void log(Disconnect disconnect, Snapshot handled) {
+		String message = "wikipedia stream disconnected: {} ({}) after {} events: new={} duplicates={} skipped={} {}";
+		Object[] args = { disconnect.reason(), disconnect.detail(), handled.received(), handled.newEvents(),
+				handled.duplicates(), handled.skippedTotal(), handled.skippedReasons() };
+		// Stopping interrupts the read, which looks like a network error but is expected.
+		if (disconnect.reason() == Reason.ENDED || !running) {
+			log.info(message, args);
+		}
+		else {
+			log.warn(message, args);
+		}
 	}
 
 	private void deleteCheckpoint() {
@@ -175,10 +198,6 @@ class RecentChangeConsumer {
 		private String lastHandledId;
 		private String savedId;
 		private Instant nextSave;
-		private int handled;
-		private int newEvents;
-		private int duplicates;
-		private final Map<SkipReason, Integer> skipped = new EnumMap<>(SkipReason.class);
 
 		Connection(String position) {
 			this.lastHandledId = position;
@@ -189,17 +208,9 @@ class RecentChangeConsumer {
 		/** Throws if publishing or saving fails, which ends the connection before this event counts. */
 		void handle(ServerSentEvent event) {
 			switch (mapper.map(event.data())) {
-				case Skipped skip -> skipped.merge(skip.reason(), 1, Integer::sum);
-				case Mapped mapped -> {
-					if (sink.accept(mapped.event()) == Accepted.NEW) {
-						newEvents++;
-					}
-					else {
-						duplicates++;
-					}
-				}
+				case Skipped skip -> tally.skipped(skip.reason());
+				case Mapped mapped -> tally.accepted(sink.accept(mapped.event()));
 			}
-			handled++;
 			if (!event.id().isEmpty()) {
 				lastHandledId = event.id();
 			}
@@ -224,20 +235,6 @@ class RecentChangeConsumer {
 			if (!lastHandledId.isEmpty() && !lastHandledId.equals(savedId)) {
 				checkpoints.save(STREAM, lastHandledId);
 				savedId = lastHandledId;
-			}
-		}
-
-		void log(Disconnect disconnect) {
-			int skippedTotal = skipped.values().stream().mapToInt(Integer::intValue).sum();
-			String message = "wikipedia stream disconnected: {} ({}) after {} events: new={} duplicates={} skipped={} {}";
-			Object[] args = { disconnect.reason(), disconnect.detail(), handled, newEvents, duplicates, skippedTotal,
-					skipped };
-			// Stopping interrupts the read, which looks like a network error but is expected.
-			if (disconnect.reason() == Reason.ENDED || !running) {
-				log.info(message, args);
-			}
-			else {
-				log.warn(message, args);
 			}
 		}
 

@@ -52,3 +52,13 @@ pulse:
       - https://feeds.arstechnica.com/arstechnica/index
       - https://feeds.bbci.co.uk/news/technology/rss.xml
       - https://rss.arxiv.org/rss/cs.AI
+  wikipedia:
+    enabled: true
+    # Every change on every Wikimedia wiki as server-sent events; only English Wikipedia is kept (journal 009).
+    stream-url: https://stream.wikimedia.org/v2/stream/recentchange
+    # Connecting and receiving the response headers.
+    connect-timeout: 10s
+    # The stream sends 29-47 changes a second, so this much silence means a dead connection (journal 010).
+    idle-timeout: 30s
+    # A crash replays at most this much, plus a 5 s safety margin; the replay is stored as duplicates.
+    checkpoint-interval: 5s

@@ -81,6 +81,8 @@ class RssIngestionEndToEndTest {
 		properties.put("pulse.rss.feeds[0]", FEED);
 		properties.put("pulse.rss.poll-interval", "100ms");
 		properties.put("server.port", "0");
+		// Keeps the test off the internet; the Wikipedia stream has its own end-to-end test.
+		properties.put("pulse.wikipedia.enabled", "false");
 		// Command-line arguments, because builder properties are only defaults and application.yaml wins.
 		String[] args = properties.entrySet().stream()
 			.map(property -> "--" + property.getKey() + "=" + property.getValue())

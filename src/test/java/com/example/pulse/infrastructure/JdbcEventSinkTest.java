@@ -31,7 +31,7 @@ import java.util.concurrent.Future;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Against a real PostgreSQL: the idempotency guarantee lives in SQL, so it has to be tested there. */
-@SpringBootTest(properties = "pulse.rss.enabled=false")
+@SpringBootTest(properties = { "pulse.rss.enabled=false", "pulse.wikipedia.enabled=false" })
 @ExtendWith(OutputCaptureExtension.class)
 class JdbcEventSinkTest {
 

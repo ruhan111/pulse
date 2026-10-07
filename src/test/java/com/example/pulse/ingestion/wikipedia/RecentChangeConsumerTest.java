@@ -4,6 +4,7 @@ import com.example.pulse.event.CheckpointStore;
 import com.example.pulse.event.EventSink;
 import com.example.pulse.event.EventSink.Accepted;
 import com.example.pulse.event.PulseEvent;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +40,9 @@ class RecentChangeConsumerTest {
 	private final StreamServer server = new StreamServer();
 	private final RecordingSink sink = new RecordingSink();
 	private final InMemoryCheckpoints checkpoints = new InMemoryCheckpoints();
+	private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
+	private final StreamTally tally = new StreamTally();
+	private final WikipediaMetrics metrics = new WikipediaMetrics(registry, tally);
 
 	RecentChangeConsumerTest() throws IOException {
 	}
@@ -52,12 +56,55 @@ class RecentChangeConsumerTest {
 	void publishesKeptEventsAndSavesTheLastIdWhenTheConnectionEnds() {
 		server.then(events(CAPTURE));
 
-		int handled = consumer(Duration.ofHours(1)).connectOnce();
+		long handled = consumer(Duration.ofHours(1)).connectOnce();
 
 		assertThat(handled).isEqualTo(120);
 		assertThat(sink.externalIds()).containsExactly("enwiki:1378416740", "enwiki:1378416745");
 		assertThat(checkpoints.load(STREAM)).contains(lastId(CAPTURE));
 		assertThat(checkpoints.saves).hasSize(1);
+	}
+
+	@Test
+	void countsWhatItReceivesSkipsAndHowTheConnectionEnded() {
+		server.then(events(CAPTURE));
+
+		consumer(Duration.ofHours(1)).connectOnce();
+
+		assertThat(registry.get("pulse.wikipedia.changes.received").functionCounter().count()).isEqualTo(120);
+		assertThat(skipped(SkipReason.OTHER_WIKI)).isEqualTo(105);
+		assertThat(skipped(SkipReason.NOT_AN_EDIT)).isEqualTo(10);
+		assertThat(skipped(SkipReason.BOT)).isEqualTo(2);
+		assertThat(skipped(SkipReason.NOT_ARTICLE)).isEqualTo(1);
+		assertThat(skipped(SkipReason.MALFORMED)).isZero();
+		assertThat(registry.get("pulse.wikipedia.connections").tag("reason", "ENDED").timer().count()).isEqualTo(1);
+	}
+
+	@Test
+	void metricsAreCurrentWhileTheConnectionIsStillOpen() throws InterruptedException {
+		// The server goes silent after the capture, so nothing ends the connection or triggers a report.
+		server.then(eventsThenSilence(CAPTURE));
+		RecentChangeConsumer consumer = consumer(Duration.ofHours(1));
+
+		consumer.start();
+		awaitEvents(2);
+		double received = registry.get("pulse.wikipedia.changes.received").functionCounter().count();
+		double otherWiki = registry.get("pulse.wikipedia.changes.skipped").tag("reason", "OTHER_WIKI")
+			.functionCounter().count();
+		consumer.stop();
+
+		assertThat(received).isEqualTo(120);
+		assertThat(otherWiki).isEqualTo(105);
+	}
+
+	@Test
+	void registersEveryMetricAtZeroBeforeAnythingHappens() {
+		// Otherwise Actuator answers 404 for a reason that hasn't occurred yet (journal 008).
+		for (SkipReason reason : SkipReason.values()) {
+			assertThat(skipped(reason)).isZero();
+		}
+		for (Disconnect.Reason reason : Disconnect.Reason.values()) {
+			assertThat(registry.get("pulse.wikipedia.connections").tag("reason", reason.name()).timer().count()).isZero();
+		}
 	}
 
 	@Test
@@ -140,8 +187,12 @@ class RecentChangeConsumerTest {
 
 	private RecentChangeConsumer consumer(Duration checkpointInterval) {
 		EventStreamClient client = new EventStreamClient(server.url(), Duration.ofSeconds(5), Duration.ofMinutes(1));
-		return new RecentChangeConsumer(client, new RecentChangeMapper(CLOCK), sink, checkpoints, CLOCK,
-				checkpointInterval, Duration.ofMillis(10), Duration.ofMillis(100));
+		return new RecentChangeConsumer(client, new RecentChangeMapper(CLOCK), sink, checkpoints, tally, metrics,
+				CLOCK, checkpointInterval, Duration.ofMillis(10), Duration.ofMillis(100));
+	}
+
+	private double skipped(SkipReason reason) {
+		return registry.get("pulse.wikipedia.changes.skipped").tag("reason", reason.name()).functionCounter().count();
 	}
 
 	private void awaitEvents(int count) throws InterruptedException {

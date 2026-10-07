@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Against a real PostgreSQL, like the event sink: the upsert lives in SQL. */
-@SpringBootTest(properties = "pulse.rss.enabled=false")
+@SpringBootTest(properties = { "pulse.rss.enabled=false", "pulse.wikipedia.enabled=false" })
 class JdbcCheckpointStoreTest {
 
 	private final String findUpdatedAt = SqlFile.load("find_checkpoint_updated_at");
