@@ -55,3 +55,4 @@ What this makes easier or harder, and what's next.
 | 010 | [Reading the Wikipedia stream](010-wikipedia-stream.md) | 4b    |
 | 011 | [Running the Wikipedia stream in the app](011-wikipedia-wiring.md) | 4c    |
 | 012 | [What a day of Wikipedia edits looks like](012-wikipedia-activity.md) | 5     |
+| 013 | [Reverts from MediaWiki's own tags](013-revert-annotations.md) | 5a    |
