@@ -17,6 +17,10 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.example.pulse.ingestion.wikipedia.JsonFields.optionalText;
+import static com.example.pulse.ingestion.wikipedia.JsonFields.requiredBoolean;
+import static com.example.pulse.ingestion.wikipedia.JsonFields.requiredLong;
+import static com.example.pulse.ingestion.wikipedia.JsonFields.requiredText;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -49,6 +53,13 @@ class RecentChangeMapper {
 		catch (JacksonException ex) {
 			return new Skipped(SkipReason.MALFORMED, ex.getOriginalMessage());
 		}
+	}
+
+	/** For callers that have already parsed the event, e.g. to see which stream it came from. */
+	public MappedChange map(JsonNode change) {
+		try {
+			return mapChecked(change);
+		}
 		catch (IllegalArgumentException | NullPointerException | DateTimeException ex) {
 			// A missing field, an impossible timestamp, or a value a PulseEvent rejects. One bad event
 			// must never stop the stream.
@@ -56,7 +67,7 @@ class RecentChangeMapper {
 		}
 	}
 
-	private MappedChange map(JsonNode change) {
+	private MappedChange mapChecked(JsonNode change) {
 		String wiki = requiredText(change, "/wiki");
 		if (!wiki.equals(WIKI)) {
 			return new Skipped(SkipReason.OTHER_WIKI, wiki);
@@ -77,7 +88,7 @@ class RecentChangeMapper {
 		return new Mapped(new PulseEvent(
 				Source.WIKIPEDIA,
 				wiki,
-				externalId(wiki, change),
+				externalId(wiki, requiredLong(change, "/revision/new")),
 				type.equals("new") ? EventType.PUBLISHED : EventType.EDITED,
 				Instant.ofEpochSecond(requiredLong(change, "/timestamp")),
 				ingestedAt,
@@ -91,8 +102,8 @@ class RecentChangeMapper {
 	 * Revision ids are unique within a wiki and never reused, so the same edit always gets the same
 	 * id. The rc {@code id} would work too, but a revision is what Wikipedia itself links to.
 	 */
-	private static String externalId(String wiki, JsonNode change) {
-		return wiki + ":" + requiredLong(change, "/revision/new");
+	static String externalId(String wiki, long revision) {
+		return wiki + ":" + revision;
 	}
 
 	/** The article, not the diff: trends are about pages. */
@@ -133,38 +144,6 @@ class RecentChangeMapper {
 			attributes.put("size_delta", String.valueOf(delta));
 		}
 		return attributes;
-	}
-
-	// The helpers take JSON pointers ("/revision/new"), so nested fields read like top-level ones and
-	// a missing field is reported by its full path.
-
-	private static String requiredText(JsonNode change, String pointer) {
-		String value = optionalText(change, pointer);
-		if (value.isBlank()) {
-			throw new IllegalArgumentException("missing " + pointer);
-		}
-		return value;
-	}
-
-	private static String optionalText(JsonNode change, String pointer) {
-		JsonNode value = change.at(pointer);
-		return value.isString() ? value.stringValue() : "";
-	}
-
-	private static long requiredLong(JsonNode change, String pointer) {
-		JsonNode value = change.at(pointer);
-		if (!value.isIntegralNumber()) {
-			throw new IllegalArgumentException("missing " + pointer);
-		}
-		return value.longValue();
-	}
-
-	private static boolean requiredBoolean(JsonNode change, String pointer) {
-		JsonNode value = change.at(pointer);
-		if (!value.isBoolean()) {
-			throw new IllegalArgumentException("missing " + pointer);
-		}
-		return value.booleanValue();
 	}
 
 }

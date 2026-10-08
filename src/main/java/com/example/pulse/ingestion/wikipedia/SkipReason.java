@@ -1,8 +1,9 @@
 package com.example.pulse.ingestion.wikipedia;
 
 /**
- * Why a recent change did not become a {@link com.example.pulse.event.PulseEvent}. Countable, so it
- * can become a metric. Listed in the order the checks run.
+ * Why an event from Wikimedia's streams was not used: a recent change that did not become a
+ * {@link com.example.pulse.event.PulseEvent}, or a tag change that did not become an annotation.
+ * Countable, so it can become a metric (tagged with the stream). Listed in the order the checks run.
  */
 enum SkipReason {
 
@@ -19,6 +20,9 @@ enum SkipReason {
 	NOT_ARTICLE,
 
 	/** Flagged as a bot edit. Bots make bulk edits that say nothing about what people care about. */
-	BOT
+	BOT,
+
+	/** A tag change that added none of the tags Pulse uses (revert, reverted, new redirect). */
+	NO_RELEVANT_TAG
 
 }

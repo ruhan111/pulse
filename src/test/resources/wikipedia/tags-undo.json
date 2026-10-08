@@ -1,0 +1,50 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Musselroe_Wind_Farm",
+		"request_id": "2abad287-a5a2-406d-9cfa-4ffba22a4389",
+		"id": "77198aaa-e0fc-4f5e-bdf9-36b4e420eca6",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:17:43.698Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936857978
+	},
+	"database": "enwiki",
+	"page_id": 21391466,
+	"page_title": "Musselroe_Wind_Farm",
+	"page_namespace": 0,
+	"rev_id": 1379235238,
+	"rev_timestamp": "2026-10-08T19:17:42Z",
+	"rev_sha1": "jbw9yrp02c0slrpoul3v344934ptwpe",
+	"rev_minor_edit": false,
+	"rev_len": 7827,
+	"rev_content_model": "wikitext",
+	"rev_content_format": "text/x-wiki",
+	"performer": {
+		"user_text": "Drmies",
+		"user_groups": [
+			"autoreviewer",
+			"suppress",
+			"sysop",
+			"*",
+			"user",
+			"autoconfirmed"
+		],
+		"user_is_bot": false,
+		"user_id": 5183450,
+		"user_registration_dt": "2007-08-27T03:33:57Z",
+		"user_edit_count": 429554
+	},
+	"page_is_redirect": false,
+	"comment": "Undid revision [[Special:Diff/1379234995|1379234995]] by [[Special:Contributions/Augmented Seventh|Augmented Seventh]] ([[User talk:Augmented Seventh|talk]]) it was sourced but it was messed up; it's an easy fix",
+	"parsedcomment": "Undid revision <a href=\"/wiki/Special:Diff/1379234995\" title=\"Special:Diff/1379234995\">1379234995</a> by <a href=\"/wiki/Special:Contributions/Augmented_Seventh\" title=\"Special:Contributions/Augmented Seventh\">Augmented Seventh</a> (<a href=\"/wiki/User_talk:Augmented_Seventh\" title=\"User talk:Augmented Seventh\">talk</a>) it was sourced but it was messed up; it&#039;s an easy fix",
+	"rev_parent_id": 1379234995,
+	"tags": [
+		"mw-undo"
+	],
+	"prior_state": {
+		"tags": []
+	}
+}

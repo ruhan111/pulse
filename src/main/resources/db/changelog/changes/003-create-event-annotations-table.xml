@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+			https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+	<changeSet id="003-create-event-annotations-table" author="pulse">
+		<comment>
+			Facts learned about an event after it happened (reverted, a revert, a redirect), at most one
+			row per fact. No foreign key to events: an annotation can arrive before its event.
+		</comment>
+		<createTable tableName="event_annotations">
+			<column name="event_id" type="uuid">
+				<constraints nullable="false"/>
+			</column>
+			<column name="kind" type="text">
+				<constraints nullable="false"/>
+			</column>
+			<column name="annotated_at" type="timestamp with time zone">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+		<addPrimaryKey tableName="event_annotations" columnNames="event_id, kind"
+				constraintName="event_annotations_pkey"/>
+	</changeSet>
+
+</databaseChangeLog>

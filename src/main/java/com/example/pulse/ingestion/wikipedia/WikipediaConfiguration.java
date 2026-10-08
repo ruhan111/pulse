@@ -1,6 +1,7 @@
 package com.example.pulse.ingestion.wikipedia;
 
 import com.example.pulse.event.CheckpointStore;
+import com.example.pulse.event.EventAnnotations;
 import com.example.pulse.event.EventSink;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,8 +17,8 @@ import java.time.Duration;
  * Wires Wikipedia ingestion and runs the stream for as long as the application runs. The only entry
  * point into {@code ingestion.wikipedia}: every other class in the package is package-private.
  * <p>
- * Requires an {@link EventSink} and a {@link CheckpointStore} bean; ingestion uses both without
- * knowing what they are.
+ * Requires {@link EventSink}, {@link EventAnnotations} and {@link CheckpointStore} beans; ingestion
+ * uses them without knowing what they are.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pulse.wikipedia", name = "enabled", havingValue = "true")
@@ -29,14 +30,14 @@ public class WikipediaConfiguration {
 	static final Duration MAX_BACKOFF = Duration.ofSeconds(60);
 
 	@Bean
-	RecentChangeConsumer recentChangeConsumer(WikipediaProperties properties, EventSink sink,
-			CheckpointStore checkpoints, Clock clock, MeterRegistry registry) {
+	WikipediaStreamConsumer wikipediaStreamConsumer(WikipediaProperties properties, EventSink sink,
+			EventAnnotations annotations, CheckpointStore checkpoints, Clock clock, MeterRegistry registry) {
 		EventStreamClient client = new EventStreamClient(properties.streamUrl(), properties.connectTimeout(),
 				properties.idleTimeout());
 		StreamTally tally = new StreamTally();
-		return new RecentChangeConsumer(client, new RecentChangeMapper(clock), sink, checkpoints, tally,
-				new WikipediaMetrics(registry, tally), clock, properties.checkpointInterval(), INITIAL_BACKOFF,
-				MAX_BACKOFF);
+		return new WikipediaStreamConsumer(client, new RecentChangeMapper(clock), new TagChangeMapper(), sink,
+				annotations, checkpoints, tally, new WikipediaMetrics(registry, tally), clock,
+				properties.checkpointInterval(), INITIAL_BACKOFF, MAX_BACKOFF);
 	}
 
 	/**
@@ -45,7 +46,7 @@ public class WikipediaConfiguration {
 	 * saved while the connection pool is still open.
 	 */
 	@Bean
-	SmartLifecycle recentChangeStream(RecentChangeConsumer consumer) {
+	SmartLifecycle wikipediaStream(WikipediaStreamConsumer consumer) {
 		return new SmartLifecycle() {
 
 			@Override

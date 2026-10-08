@@ -12,9 +12,10 @@ import java.util.Map;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Metrics of the Wikipedia stream. Whether a kept change was new or a duplicate is counted by the
- * sink ({@code pulse.events.accepted}, {@code source=WIKIPEDIA}); this covers what only the stream
- * knows: everything received, everything skipped, and how connections end.
+ * Metrics of the Wikipedia streams, tagged with the stream. Whether a kept change or an annotation
+ * was new is counted where it is stored ({@code pulse.events.accepted}, {@code pulse.annotations.accepted});
+ * this covers what only the stream knows: everything received, everything skipped, and how
+ * connections end.
  * <p>
  * The counters read the consumer's {@link StreamTally} when metrics are scraped instead of being
  * incremented from the reading loop, so the loop contains no metrics code and nothing is counted
@@ -34,14 +35,19 @@ class WikipediaMetrics {
 	WikipediaMetrics(MeterRegistry registry, StreamTally tally) {
 		requireNonNull(registry, "registry");
 		requireNonNull(tally, "tally");
-		FunctionCounter.builder("pulse.wikipedia.changes.received", tally, StreamTally::received)
-			.description("Changes handled from the stream, from every wiki, before filtering")
-			.register(registry);
-		for (SkipReason reason : SkipReason.values()) {
-			FunctionCounter.builder("pulse.wikipedia.changes.skipped", tally, counts -> counts.skippedCount(reason))
-				.description("Handled changes that did not become events")
-				.tag("reason", reason.name())
+		for (WikipediaStream stream : WikipediaStream.values()) {
+			FunctionCounter.builder("pulse.wikipedia.changes.received", tally, counts -> counts.received(stream))
+				.description("Events handled from a stream, from every wiki, before filtering")
+				.tag("stream", stream.name())
 				.register(registry);
+			for (SkipReason reason : SkipReason.values()) {
+				FunctionCounter
+					.builder("pulse.wikipedia.changes.skipped", tally, counts -> counts.skippedCount(stream, reason))
+					.description("Handled events that became neither an event nor an annotation")
+					.tag("stream", stream.name())
+					.tag("reason", reason.name())
+					.register(registry);
+			}
 		}
 		for (Reason reason : Reason.values()) {
 			connections.put(reason, Timer.builder("pulse.wikipedia.connections")

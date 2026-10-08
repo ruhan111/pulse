@@ -1,7 +1,5 @@
 package com.example.pulse.ingestion.wikipedia;
 
-import com.example.pulse.event.EventSink.Accepted;
-
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
@@ -11,53 +9,64 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import static java.util.Objects.requireNonNull;
 
 /**
- * What the stream has handled since startup: the one place the consumer counts. The disconnect log
- * line reads it per connection (via {@link Snapshot#minus}), and {@link WikipediaMetrics} reads it
- * whenever metrics are scraped, so counting never happens twice and metrics are never stale.
+ * What the consumer has handled since startup, per stream: the one place it counts. The disconnect
+ * log line reads it per connection (via {@link Snapshot#minus}), and {@link WikipediaMetrics} reads
+ * it whenever metrics are scraped, so counting never happens twice and metrics are never stale.
  * <p>
- * Written only by the reading thread, read by any thread, hence the atomics. A change counts once it
- * has been handled: skipped, or accepted by the sink. One that failed to publish is not counted; it
- * arrives again after the reconnect.
+ * An event is either skipped or used. A used event produces outputs (an event to store, or
+ * annotations), each of which turns out to be new or already known. Written only by the reading
+ * thread, read by any thread, hence the atomics. An event whose output failed to store is not
+ * counted; it arrives again after the reconnect.
  */
 final class StreamTally {
 
-	private final AtomicLong newEvents = new AtomicLong();
-	private final AtomicLong duplicates = new AtomicLong();
-	private final AtomicLongArray skipped = new AtomicLongArray(SkipReason.values().length);
+	private final Map<WikipediaStream, Counts> counts = new EnumMap<>(WikipediaStream.class);
 
-	void skipped(SkipReason reason) {
-		skipped.incrementAndGet(reason.ordinal());
-	}
-
-	void accepted(Accepted accepted) {
-		switch (accepted) {
-			case NEW -> newEvents.incrementAndGet();
-			case DUPLICATE -> duplicates.incrementAndGet();
+	StreamTally() {
+		for (WikipediaStream stream : WikipediaStream.values()) {
+			counts.put(stream, new Counts());
 		}
 	}
 
-	long received() {
-		long received = newEvents.get() + duplicates.get();
-		for (int i = 0; i < skipped.length(); i++) {
-			received += skipped.get(i);
-		}
-		return received;
+	void skipped(WikipediaStream stream, SkipReason reason) {
+		counts.get(stream).skipped.incrementAndGet(reason.ordinal());
 	}
 
-	long skippedCount(SkipReason reason) {
-		return skipped.get(reason.ordinal());
+	void used(WikipediaStream stream, int added, int duplicates) {
+		Counts counts = this.counts.get(stream);
+		counts.used.incrementAndGet();
+		counts.added.addAndGet(added);
+		counts.duplicates.addAndGet(duplicates);
 	}
 
-	Snapshot snapshot() {
-		Map<SkipReason, Long> bySkipReason = new EnumMap<>(SkipReason.class);
+	long received(WikipediaStream stream) {
+		return snapshot(stream).received();
+	}
+
+	long skippedCount(WikipediaStream stream, SkipReason reason) {
+		return counts.get(stream).skipped.get(reason.ordinal());
+	}
+
+	Snapshot snapshot(WikipediaStream stream) {
+		Counts counts = this.counts.get(stream);
+		Map<SkipReason, Long> skipped = new EnumMap<>(SkipReason.class);
 		for (SkipReason reason : SkipReason.values()) {
-			bySkipReason.put(reason, skippedCount(reason));
+			skipped.put(reason, counts.skipped.get(reason.ordinal()));
 		}
-		return new Snapshot(newEvents.get(), duplicates.get(), bySkipReason);
+		return new Snapshot(counts.used.get(), counts.added.get(), counts.duplicates.get(), skipped);
 	}
 
-	/** The counts at one moment; the difference of two is what happened in between. */
-	record Snapshot(long newEvents, long duplicates, Map<SkipReason, Long> skipped) {
+	private static final class Counts {
+
+		final AtomicLong used = new AtomicLong();
+		final AtomicLong added = new AtomicLong();
+		final AtomicLong duplicates = new AtomicLong();
+		final AtomicLongArray skipped = new AtomicLongArray(SkipReason.values().length);
+
+	}
+
+	/** The counts of one stream at one moment; the difference of two is what happened in between. */
+	record Snapshot(long used, long added, long duplicates, Map<SkipReason, Long> skipped) {
 
 		Snapshot {
 			requireNonNull(skipped, "skipped");
@@ -68,7 +77,8 @@ final class StreamTally {
 		Snapshot minus(Snapshot earlier) {
 			Map<SkipReason, Long> difference = new EnumMap<>(SkipReason.class);
 			skipped.forEach((reason, count) -> difference.put(reason, count - earlier.skipped.get(reason)));
-			return new Snapshot(newEvents - earlier.newEvents, duplicates - earlier.duplicates, difference);
+			return new Snapshot(used - earlier.used, added - earlier.added, duplicates - earlier.duplicates,
+					difference);
 		}
 
 		long skippedTotal() {
@@ -76,7 +86,7 @@ final class StreamTally {
 		}
 
 		long received() {
-			return newEvents + duplicates + skippedTotal();
+			return used + skippedTotal();
 		}
 
 		/** Only the reasons that occurred, for a short log line. */

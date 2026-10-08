@@ -1,0 +1,46 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Other_Mommy",
+		"request_id": "58c153be-eb23-44ae-b202-dd24a7e7bf4e",
+		"id": "81883066-16b1-4ad3-9b92-e2d8bc2dc8e1",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:17:31.496Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936857834
+	},
+	"database": "enwiki",
+	"page_id": 80037482,
+	"page_title": "Other_Mommy",
+	"page_namespace": 0,
+	"rev_id": 1379235218,
+	"rev_timestamp": "2026-10-08T19:17:30Z",
+	"rev_sha1": "c69ag2qgkm956648o0zqbwies7cqrez",
+	"rev_minor_edit": true,
+	"rev_len": 8839,
+	"rev_content_model": "wikitext",
+	"rev_content_format": "text/x-wiki",
+	"performer": {
+		"user_text": "Hip2BeSquare1",
+		"user_groups": [
+			"*",
+			"user"
+		],
+		"user_is_bot": false,
+		"user_id": 46928873,
+		"user_registration_dt": "2023-11-21T16:46:38Z",
+		"user_edit_count": 6
+	},
+	"page_is_redirect": false,
+	"comment": "this information neither relevant, nor cited.",
+	"parsedcomment": "this information neither relevant, nor cited.",
+	"rev_parent_id": 1379232238,
+	"tags": [
+		"mw-manual-revert"
+	],
+	"prior_state": {
+		"tags": []
+	}
+}

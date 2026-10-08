@@ -1,9 +1,14 @@
 package com.example.pulse.ingestion.wikipedia;
 
 import com.example.pulse.event.CheckpointStore;
+import com.example.pulse.event.EventAnnotation;
+import com.example.pulse.event.EventAnnotation.Kind;
+import com.example.pulse.event.EventAnnotations;
+import com.example.pulse.event.EventId;
 import com.example.pulse.event.EventSink;
 import com.example.pulse.event.EventSink.Accepted;
 import com.example.pulse.event.PulseEvent;
+import com.example.pulse.event.Source;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -22,29 +27,32 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static com.example.pulse.ingestion.wikipedia.RecentChangeConsumer.STREAM;
+import static com.example.pulse.ingestion.wikipedia.WikipediaStreamConsumer.STREAM;
 import static com.example.pulse.ingestion.wikipedia.StreamServer.events;
 import static com.example.pulse.ingestion.wikipedia.StreamServer.eventsThenSilence;
 import static com.example.pulse.ingestion.wikipedia.StreamServer.status;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 /**
  * The consumer against a local stream server, with in-memory sink and checkpoints. Uses the real
  * capture: 120 events, of which 2 are kept (revisions 1378416740 and 1378416745).
  */
-class RecentChangeConsumerTest {
+class WikipediaStreamConsumerTest {
 
 	private static final String CAPTURE = RecentChangeMapperTest.resource("recentchange-stream.txt");
+	private static final String TWO_STREAMS = RecentChangeMapperTest.resource("two-streams.txt");
 	private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-04T11:00:00Z"), ZoneOffset.UTC);
 
 	private final StreamServer server = new StreamServer();
 	private final RecordingSink sink = new RecordingSink();
 	private final InMemoryCheckpoints checkpoints = new InMemoryCheckpoints();
 	private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
+	private final RecordingAnnotations annotations = new RecordingAnnotations();
 	private final StreamTally tally = new StreamTally();
 	private final WikipediaMetrics metrics = new WikipediaMetrics(registry, tally);
 
-	RecentChangeConsumerTest() throws IOException {
+	WikipediaStreamConsumerTest() throws IOException {
 	}
 
 	@AfterEach
@@ -70,7 +78,8 @@ class RecentChangeConsumerTest {
 
 		consumer(Duration.ofHours(1)).connectOnce();
 
-		assertThat(registry.get("pulse.wikipedia.changes.received").functionCounter().count()).isEqualTo(120);
+		assertThat(received(WikipediaStream.RECENT_CHANGES)).isEqualTo(120);
+		assertThat(received(WikipediaStream.REVISION_TAGS)).isZero();
 		assertThat(skipped(SkipReason.OTHER_WIKI)).isEqualTo(105);
 		assertThat(skipped(SkipReason.NOT_AN_EDIT)).isEqualTo(10);
 		assertThat(skipped(SkipReason.BOT)).isEqualTo(2);
@@ -79,17 +88,63 @@ class RecentChangeConsumerTest {
 		assertThat(registry.get("pulse.wikipedia.connections").tag("reason", "ENDED").timer().count()).isEqualTo(1);
 	}
 
+	/**
+	 * The real two-stream capture: 221 events (172 recent changes, 49 tag changes) in which an edit to
+	 * "Torrington, Connecticut" is rolled back. The rollback's tag arrives before the rollback itself.
+	 */
+	@Test
+	void recordsRevertTagsAsAnnotationsOfTheEditsTheyAreAbout() {
+		server.then(events(TWO_STREAMS));
+
+		consumer(Duration.ofHours(1)).connectOnce();
+
+		EventId vandalism = EventId.of(Source.WIKIPEDIA, "enwiki:1379235224");
+		EventId rollback = EventId.of(Source.WIKIPEDIA, "enwiki:1379235231");
+		assertThat(annotations.recorded).extracting(EventAnnotation::eventId, EventAnnotation::kind).containsExactly(
+				tuple(rollback, Kind.REVERT),
+				tuple(vandalism, Kind.REVERTED));
+		// The annotations point at events this run stored: the two streams join on the EventId.
+		assertThat(sink.events).extracting(PulseEvent::id).contains(vandalism, rollback);
+		assertThat(sink.events).hasSize(6);
+	}
+
+	@Test
+	void countsEachStreamSeparately() {
+		server.then(events(TWO_STREAMS));
+
+		consumer(Duration.ofHours(1)).connectOnce();
+
+		assertThat(received(WikipediaStream.RECENT_CHANGES)).isEqualTo(172);
+		assertThat(skipped(WikipediaStream.RECENT_CHANGES, SkipReason.OTHER_WIKI)).isEqualTo(162);
+		assertThat(received(WikipediaStream.REVISION_TAGS)).isEqualTo(49);
+		assertThat(skipped(WikipediaStream.REVISION_TAGS, SkipReason.OTHER_WIKI)).isEqualTo(40);
+		assertThat(skipped(WikipediaStream.REVISION_TAGS, SkipReason.NO_RELEVANT_TAG)).isEqualTo(5);
+		assertThat(skipped(WikipediaStream.REVISION_TAGS, SkipReason.NOT_ARTICLE)).isEqualTo(2);
+		assertThat(skipped(WikipediaStream.REVISION_TAGS, SkipReason.MALFORMED)).isZero();
+	}
+
+	@Test
+	void aFailedAnnotationDoesNotAdvanceTheCheckpointPastIt() {
+		server.then(events(TWO_STREAMS));
+		annotations.failing = true;
+
+		consumer(Duration.ZERO).connectOnce();
+
+		// The first relevant tag is the rollback's; the checkpoint stays just before it, so it comes again.
+		assertThat(checkpoints.load(STREAM)).contains(idBeforeData(TWO_STREAMS, "\"rev_id\":1379235231"));
+		assertThat(sink.events).isNotEmpty();
+	}
+
 	@Test
 	void metricsAreCurrentWhileTheConnectionIsStillOpen() throws InterruptedException {
 		// The server goes silent after the capture, so nothing ends the connection or triggers a report.
 		server.then(eventsThenSilence(CAPTURE));
-		RecentChangeConsumer consumer = consumer(Duration.ofHours(1));
+		WikipediaStreamConsumer consumer = consumer(Duration.ofHours(1));
 
 		consumer.start();
 		awaitEvents(2);
-		double received = registry.get("pulse.wikipedia.changes.received").functionCounter().count();
-		double otherWiki = registry.get("pulse.wikipedia.changes.skipped").tag("reason", "OTHER_WIKI")
-			.functionCounter().count();
+		double received = received(WikipediaStream.RECENT_CHANGES);
+		double otherWiki = skipped(SkipReason.OTHER_WIKI);
 		consumer.stop();
 
 		assertThat(received).isEqualTo(120);
@@ -99,8 +154,11 @@ class RecentChangeConsumerTest {
 	@Test
 	void registersEveryMetricAtZeroBeforeAnythingHappens() {
 		// Otherwise Actuator answers 404 for a reason that hasn't occurred yet (journal 008).
-		for (SkipReason reason : SkipReason.values()) {
-			assertThat(skipped(reason)).isZero();
+		for (WikipediaStream stream : WikipediaStream.values()) {
+			assertThat(received(stream)).isZero();
+			for (SkipReason reason : SkipReason.values()) {
+				assertThat(skipped(stream, reason)).isZero();
+			}
 		}
 		for (Disconnect.Reason reason : Disconnect.Reason.values()) {
 			assertThat(registry.get("pulse.wikipedia.connections").tag("reason", reason.name()).timer().count()).isZero();
@@ -110,7 +168,7 @@ class RecentChangeConsumerTest {
 	@Test
 	void resumesFromTheSavedCheckpoint() {
 		server.then(events(CAPTURE)).then(events(""));
-		RecentChangeConsumer consumer = consumer(Duration.ofHours(1));
+		WikipediaStreamConsumer consumer = consumer(Duration.ofHours(1));
 
 		consumer.connectOnce();
 		consumer.connectOnce();
@@ -133,7 +191,7 @@ class RecentChangeConsumerTest {
 	void aFailedPublishDoesNotAdvanceTheCheckpointPastTheFailedEvent() {
 		server.then(events(CAPTURE)).then(events(CAPTURE));
 		sink.failOn("enwiki:1378416745");
-		RecentChangeConsumer consumer = consumer(Duration.ZERO);
+		WikipediaStreamConsumer consumer = consumer(Duration.ZERO);
 
 		consumer.connectOnce();
 		String resumedFrom = checkpoints.load(STREAM).orElseThrow();
@@ -151,7 +209,7 @@ class RecentChangeConsumerTest {
 	void forgetsAPositionTheServerRejectsAndStartsFromNow() {
 		checkpoints.save(STREAM, "garbage");
 		server.then(status(400)).then(events(""));
-		RecentChangeConsumer consumer = consumer(Duration.ofHours(1));
+		WikipediaStreamConsumer consumer = consumer(Duration.ofHours(1));
 
 		consumer.connectOnce();
 		consumer.connectOnce();
@@ -171,7 +229,7 @@ class RecentChangeConsumerTest {
 	@Test
 	void reconnectsInTheBackgroundAndStopsPromptlyMidStream() throws InterruptedException {
 		server.then(status(503)).then(eventsThenSilence(CAPTURE));
-		RecentChangeConsumer consumer = consumer(Duration.ofHours(1));
+		WikipediaStreamConsumer consumer = consumer(Duration.ofHours(1));
 
 		consumer.start();
 		awaitEvents(2);
@@ -185,14 +243,24 @@ class RecentChangeConsumerTest {
 		assertThat(checkpoints.load(STREAM)).contains(lastId(CAPTURE));
 	}
 
-	private RecentChangeConsumer consumer(Duration checkpointInterval) {
+	private WikipediaStreamConsumer consumer(Duration checkpointInterval) {
 		EventStreamClient client = new EventStreamClient(server.url(), Duration.ofSeconds(5), Duration.ofMinutes(1));
-		return new RecentChangeConsumer(client, new RecentChangeMapper(CLOCK), sink, checkpoints, tally, metrics,
+		return new WikipediaStreamConsumer(client, new RecentChangeMapper(CLOCK), new TagChangeMapper(), sink,
+				annotations, checkpoints, tally, metrics,
 				CLOCK, checkpointInterval, Duration.ofMillis(10), Duration.ofMillis(100));
 	}
 
+	private double received(WikipediaStream stream) {
+		return registry.get("pulse.wikipedia.changes.received").tag("stream", stream.name()).functionCounter().count();
+	}
+
 	private double skipped(SkipReason reason) {
-		return registry.get("pulse.wikipedia.changes.skipped").tag("reason", reason.name()).functionCounter().count();
+		return skipped(WikipediaStream.RECENT_CHANGES, reason);
+	}
+
+	private double skipped(WikipediaStream stream, SkipReason reason) {
+		return registry.get("pulse.wikipedia.changes.skipped").tag("stream", stream.name()).tag("reason", reason.name())
+			.functionCounter().count();
 	}
 
 	private void awaitEvents(int count) throws InterruptedException {
@@ -205,7 +273,7 @@ class RecentChangeConsumerTest {
 	}
 
 	private static String rewound(String id) {
-		return ResumePosition.rewind(id, RecentChangeConsumer.REPLAY_MARGIN);
+		return ResumePosition.rewind(id, WikipediaStreamConsumer.REPLAY_MARGIN);
 	}
 
 	private static String lastId(String capture) {
@@ -221,6 +289,18 @@ class RecentChangeConsumerTest {
 			}
 		}
 		throw new AssertionError("revision " + revision + " not in capture");
+	}
+
+	/** The id of the event before the first one whose data contains the text. */
+	private static String idBeforeData(String capture, String text) {
+		List<String> ids = ids(capture);
+		List<String> data = capture.lines().filter(line -> line.startsWith("data: ")).toList();
+		for (int i = 0; i < data.size(); i++) {
+			if (data.get(i).contains(text)) {
+				return ids.get(i - 1);
+			}
+		}
+		throw new AssertionError(text + " not in capture");
 	}
 
 	private static List<String> ids(String capture) {
@@ -248,6 +328,23 @@ class RecentChangeConsumerTest {
 			}
 			events.add(event);
 			return seen.add(event.externalId()) ? Accepted.NEW : Accepted.DUPLICATE;
+		}
+
+	}
+
+	private static final class RecordingAnnotations implements EventAnnotations {
+
+		final List<EventAnnotation> recorded = new CopyOnWriteArrayList<>();
+		private final Set<String> known = ConcurrentHashMap.newKeySet();
+		volatile boolean failing;
+
+		@Override
+		public boolean annotate(EventAnnotation annotation) {
+			if (failing) {
+				throw new IllegalStateException("database down");
+			}
+			recorded.add(annotation);
+			return known.add(annotation.eventId() + ":" + annotation.kind());
 		}
 
 	}

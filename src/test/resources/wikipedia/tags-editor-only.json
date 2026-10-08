@@ -1,0 +1,49 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Kursat_Jonathan_Pekgoz",
+		"request_id": "8b739d43-ed4f-47cf-a5c5-0ead06660624",
+		"id": "2c0dcb70-83da-4f24-80e3-02d17b487e55",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:17:14.831Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936857643
+	},
+	"database": "enwiki",
+	"page_id": 84451984,
+	"page_title": "Kursat_Jonathan_Pekgoz",
+	"page_namespace": 0,
+	"rev_id": 1379235202,
+	"rev_timestamp": "2026-10-08T19:17:14Z",
+	"rev_sha1": "2w86p9evhipy9y6g68p7kxcv4xeegsq",
+	"rev_minor_edit": false,
+	"rev_len": 5804,
+	"rev_content_model": "wikitext",
+	"rev_content_format": "text/x-wiki",
+	"performer": {
+		"user_text": "Knypster",
+		"user_groups": [
+			"autoreviewer",
+			"extendedconfirmed",
+			"*",
+			"user",
+			"autoconfirmed"
+		],
+		"user_is_bot": false,
+		"user_id": 51235003,
+		"user_registration_dt": "2025-12-09T19:58:47Z",
+		"user_edit_count": 5167
+	},
+	"page_is_redirect": false,
+	"comment": "remove tag",
+	"parsedcomment": "remove tag",
+	"rev_parent_id": 1379234587,
+	"tags": [
+		"wikieditor"
+	],
+	"prior_state": {
+		"tags": []
+	}
+}
