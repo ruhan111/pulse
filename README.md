@@ -96,7 +96,7 @@ so breaking one fails the build.
 | 2     | Ingestion: one RSS adapter producing real events                       | done    |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | done (RSS gives ≈ 12 new events/hour, see journal 008) |
 | 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | done (English Wikipedia, ≈ 2,700–4,700 events/hour, no gaps across restarts and outages; journals 009–011); more sources only if detection misses stories |
-| 5     | Trend detection: per-mention counts, baselines, spike detection       | in progress: 5a revert annotations from MediaWiki's own tags done (journal 013); 5b counting next |
+| 5     | Trend detection: per-mention counts, baselines, spike detection       | in progress: 5a revert annotations from MediaWiki's own tags done (journal 013); about 5 candidates an hour, about 7 strong stories a day (journal 014); 5b counting next |
 | 6     | API: expose trends and the events behind them                          | planned |
 | 7     | Load testing: synthetic generator, measure against SLOs                | planned |
 | 8     | Scale based on evidence (Kafka, Redis, ClickHouse… only if justified)  | planned |
