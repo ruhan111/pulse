@@ -1,23 +1,38 @@
 package com.example.pulse.ingestion.wikipedia;
 
 import com.example.pulse.event.CheckpointStore;
+import com.example.pulse.event.EventAnnotation;
+import com.example.pulse.event.EventAnnotations;
 import com.example.pulse.event.EventSink;
+import com.example.pulse.event.EventSink.Accepted;
 import com.example.pulse.ingestion.wikipedia.Disconnect.Reason;
+import com.example.pulse.ingestion.wikipedia.MappedChange.Annotated;
 import com.example.pulse.ingestion.wikipedia.MappedChange.Mapped;
 import com.example.pulse.ingestion.wikipedia.MappedChange.Skipped;
 import com.example.pulse.ingestion.wikipedia.StreamTally.Snapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.MissingNode;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.EnumMap;
+import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
 /**
- * Keeps reading Wikipedia's recent changes on a dedicated thread: connect, map, publish, and
- * reconnect with backoff whenever the connection ends.
+ * Keeps reading Wikipedia's streams on a dedicated thread: connect, map, publish, and reconnect with
+ * backoff whenever the connection ends.
+ * <p>
+ * One connection carries two streams (journal 013). Recent changes become events in the
+ * {@link EventSink}; tag changes become {@link EventAnnotation}s, such as "this edit was reverted".
+ * Sharing the connection means one thread, one checkpoint, and both streams always resume from the
+ * same position; the server's id holds a position per stream.
  * <p>
  * Delivery is at-least-once. The checkpoint is the id of the last event that was fully handled;
  * one thread handles events in order, so everything before it has been published too. It is saved
@@ -32,11 +47,15 @@ import static java.util.Objects.requireNonNull;
  * Without a checkpoint (the very first start), reading starts from now. Backfilling the stream's
  * history would look like one huge spike.
  */
-class RecentChangeConsumer {
+class WikipediaStreamConsumer {
 
+	/**
+	 * The checkpoint's key. It names the first stream only because it existed before the second was
+	 * added; renaming it would lose the saved position of running installations.
+	 */
 	static final String STREAM = "wikipedia.recentchange";
 
-	private static final Logger log = LoggerFactory.getLogger(RecentChangeConsumer.class);
+	private static final Logger log = LoggerFactory.getLogger(WikipediaStreamConsumer.class);
 	private static final Duration STOP_TIMEOUT = Duration.ofSeconds(10);
 
 	/**
@@ -46,8 +65,11 @@ class RecentChangeConsumer {
 	static final Duration REPLAY_MARGIN = Duration.ofSeconds(5);
 
 	private final EventStreamClient client;
-	private final RecentChangeMapper mapper;
+	private final JsonMapper json = new JsonMapper();
+	private final RecentChangeMapper changeMapper;
+	private final TagChangeMapper tagMapper;
 	private final EventSink sink;
+	private final EventAnnotations annotations;
 	private final CheckpointStore checkpoints;
 	private final StreamTally tally;
 	private final WikipediaMetrics metrics;
@@ -59,12 +81,15 @@ class RecentChangeConsumer {
 	private volatile boolean running;
 	private Thread thread;
 
-	RecentChangeConsumer(EventStreamClient client, RecentChangeMapper mapper, EventSink sink,
-			CheckpointStore checkpoints, StreamTally tally, WikipediaMetrics metrics, Clock clock,
-			Duration checkpointInterval, Duration initialBackoff, Duration maxBackoff) {
+	WikipediaStreamConsumer(EventStreamClient client, RecentChangeMapper changeMapper, TagChangeMapper tagMapper,
+			EventSink sink, EventAnnotations annotations, CheckpointStore checkpoints, StreamTally tally,
+			WikipediaMetrics metrics, Clock clock, Duration checkpointInterval, Duration initialBackoff,
+			Duration maxBackoff) {
 		this.client = requireNonNull(client, "client");
-		this.mapper = requireNonNull(mapper, "mapper");
+		this.changeMapper = requireNonNull(changeMapper, "changeMapper");
+		this.tagMapper = requireNonNull(tagMapper, "tagMapper");
 		this.sink = requireNonNull(sink, "sink");
+		this.annotations = requireNonNull(annotations, "annotations");
 		this.checkpoints = requireNonNull(checkpoints, "checkpoints");
 		this.tally = requireNonNull(tally, "tally");
 		this.metrics = requireNonNull(metrics, "metrics");
@@ -144,11 +169,12 @@ class RecentChangeConsumer {
 		log.info("wikipedia stream connecting, {}", position.isEmpty() ? "starting from now" : "resuming");
 
 		Connection connection = new Connection(position);
-		Snapshot before = tally.snapshot();
+		Map<WikipediaStream, Snapshot> before = snapshots();
 		long start = System.nanoTime();
 		Disconnect disconnect = client.read(ResumePosition.rewind(position, REPLAY_MARGIN), connection::handle);
 		metrics.disconnected(disconnect.reason(), Duration.ofNanos(System.nanoTime() - start));
-		Snapshot handled = tally.snapshot().minus(before);
+		Map<WikipediaStream, Snapshot> handled = new EnumMap<>(WikipediaStream.class);
+		snapshots().forEach((stream, now) -> handled.put(stream, now.minus(before.get(stream))));
 		if (!running) {
 			// Stopping interrupted the read. Clear the flag so the final checkpoint can still be saved.
 			Thread.interrupted();
@@ -162,13 +188,26 @@ class RecentChangeConsumer {
 			connection.saveCheckpoint();
 		}
 		log(disconnect, handled);
-		return handled.received();
+		return handled.values().stream().mapToLong(Snapshot::received).sum();
 	}
 
-	private void log(Disconnect disconnect, Snapshot handled) {
-		String message = "wikipedia stream disconnected: {} ({}) after {} events: new={} duplicates={} skipped={} {}";
-		Object[] args = { disconnect.reason(), disconnect.detail(), handled.received(), handled.newEvents(),
-				handled.duplicates(), handled.skippedTotal(), handled.skippedReasons() };
+	private Map<WikipediaStream, Snapshot> snapshots() {
+		Map<WikipediaStream, Snapshot> snapshots = new EnumMap<>(WikipediaStream.class);
+		for (WikipediaStream stream : WikipediaStream.values()) {
+			snapshots.put(stream, tally.snapshot(stream));
+		}
+		return snapshots;
+	}
+
+	private void log(Disconnect disconnect, Map<WikipediaStream, Snapshot> handled) {
+		Snapshot changes = handled.get(WikipediaStream.RECENT_CHANGES);
+		Snapshot tags = handled.get(WikipediaStream.REVISION_TAGS);
+		String message = "wikipedia stream disconnected: {} ({}) | changes: received={} new={} duplicates={} "
+				+ "skipped={} {} | tags: received={} annotations new={} known={} skipped={} {}";
+		Object[] args = { disconnect.reason(), disconnect.detail(),
+				changes.received(), changes.added(), changes.duplicates(), changes.skippedTotal(),
+				changes.skippedReasons(),
+				tags.received(), tags.added(), tags.duplicates(), tags.skippedTotal(), tags.skippedReasons() };
 		// Stopping interrupts the read, which looks like a network error but is expected.
 		if (disconnect.reason() == Reason.ENDED || !running) {
 			log.info(message, args);
@@ -207,9 +246,22 @@ class RecentChangeConsumer {
 
 		/** Throws if publishing or saving fails, which ends the connection before this event counts. */
 		void handle(ServerSentEvent event) {
-			switch (mapper.map(event.data())) {
-				case Skipped skip -> tally.skipped(skip.reason());
-				case Mapped mapped -> tally.accepted(sink.accept(mapped.event()));
+			JsonNode data = parse(event.data());
+			WikipediaStream stream = WikipediaStream.of(data);
+			MappedChange result = stream == WikipediaStream.REVISION_TAGS ? tagMapper.map(data) : changeMapper.map(data);
+			switch (result) {
+				case Skipped skip -> tally.skipped(stream, skip.reason());
+				case Mapped mapped -> {
+					boolean isNew = sink.accept(mapped.event()) == Accepted.NEW;
+					tally.used(stream, isNew ? 1 : 0, isNew ? 0 : 1);
+				}
+				case Annotated annotated -> {
+					int added = 0;
+					for (EventAnnotation annotation : annotated.annotations()) {
+						added += annotations.annotate(annotation) ? 1 : 0;
+					}
+					tally.used(stream, added, annotated.annotations().size() - added);
+				}
 			}
 			if (!event.id().isEmpty()) {
 				lastHandledId = event.id();
@@ -218,6 +270,16 @@ class RecentChangeConsumer {
 			if (!now.isBefore(nextSave)) {
 				save();
 				nextSave = now.plus(checkpointInterval);
+			}
+		}
+
+		/** Unparseable data becomes a missing node, which the recent-change mapper rejects as malformed. */
+		private JsonNode parse(String data) {
+			try {
+				return json.readTree(data);
+			}
+			catch (JacksonException ex) {
+				return MissingNode.getInstance();
 			}
 		}
 

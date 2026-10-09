@@ -1,0 +1,48 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Talk:Always_Remember_Us_This_Way/GA1",
+		"request_id": "a0b28d25-1b96-4340-b37e-40747a9184b2",
+		"id": "9f23d796-7adf-424c-b714-79022d6d6d87",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:17:09.759Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936857587
+	},
+	"database": "enwiki",
+	"page_id": 84440793,
+	"page_title": "Talk:Always_Remember_Us_This_Way/GA1",
+	"page_namespace": 1,
+	"rev_id": 1379235192,
+	"rev_timestamp": "2026-10-08T19:17:09Z",
+	"rev_sha1": "h99hcpmlyfyid97ex9ink5zv2jt9q1m",
+	"rev_minor_edit": false,
+	"rev_len": 13870,
+	"rev_content_model": "wikitext",
+	"rev_content_format": "text/x-wiki",
+	"performer": {
+		"user_text": "Kyle Peake",
+		"user_groups": [
+			"extendedconfirmed",
+			"*",
+			"user",
+			"autoconfirmed"
+		],
+		"user_is_bot": false,
+		"user_id": 33639943,
+		"user_registration_dt": "2018-04-28T19:00:24Z",
+		"user_edit_count": 27750
+	},
+	"page_is_redirect": false,
+	"comment": "onhold",
+	"parsedcomment": "onhold",
+	"rev_parent_id": 1379205828,
+	"tags": [
+		"wikieditor"
+	],
+	"prior_state": {
+		"tags": []
+	}
+}

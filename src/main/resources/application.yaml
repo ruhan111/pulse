@@ -54,8 +54,9 @@ pulse:
       - https://rss.arxiv.org/rss/cs.AI
   wikipedia:
     enabled: true
-    # Every change on every Wikimedia wiki as server-sent events; only English Wikipedia is kept (journal 009).
-    stream-url: https://stream.wikimedia.org/v2/stream/recentchange
+    # Two streams over one connection (journal 013): every change on every Wikimedia wiki, and the tags
+    # MediaWiki adds to revisions (e.g. "reverted"). Only English Wikipedia is kept (journal 009).
+    stream-url: https://stream.wikimedia.org/v2/stream/recentchange,mediawiki.revision-tags-change
     # Connecting and receiving the response headers.
     connect-timeout: 10s
     # The stream sends 29-47 changes a second, so this much silence means a dead connection (journal 010).

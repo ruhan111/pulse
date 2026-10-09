@@ -1,6 +1,7 @@
 package com.example.pulse.ingestion.wikipedia;
 
 import com.example.pulse.event.CheckpointStore;
+import com.example.pulse.event.EventAnnotations;
 import com.example.pulse.event.EventSink;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -25,6 +26,7 @@ class WikipediaConfigurationTest {
 		.withUserConfiguration(WikipediaConfiguration.class)
 		.withBean(EventSink.class, () -> event -> EventSink.Accepted.NEW)
 		.withBean(CheckpointStore.class, NoCheckpoints::new)
+		.withBean(EventAnnotations.class, () -> annotation -> true)
 		.withBean(Clock.class, Clock::systemUTC)
 		.withBean(MeterRegistry.class, SimpleMeterRegistry::new);
 
@@ -35,7 +37,7 @@ class WikipediaConfigurationTest {
 
 	@Test
 	void isOffWhenNotEnabled() {
-		bare.run(app -> assertThat(app).doesNotHaveBean(RecentChangeConsumer.class));
+		bare.run(app -> assertThat(app).doesNotHaveBean(WikipediaStreamConsumer.class));
 	}
 
 	@Test
@@ -55,16 +57,16 @@ class WikipediaConfigurationTest {
 		bare.withInitializer(new ConfigDataApplicationContextInitializer())
 			.withPropertyValues("pulse.wikipedia.enabled=false")
 			.run(app -> assertThat(app.getEnvironment().getProperty("pulse.wikipedia.stream-url"))
-				.isEqualTo("https://stream.wikimedia.org/v2/stream/recentchange"));
+				.isEqualTo("https://stream.wikimedia.org/v2/stream/recentchange,mediawiki.revision-tags-change"));
 	}
 
 	@Test
 	void startsTheStreamWithTheContextAndStopsItOnClose() {
-		RecentChangeConsumer[] consumer = new RecentChangeConsumer[1];
+		WikipediaStreamConsumer[] consumer = new WikipediaStreamConsumer[1];
 		shipped.run(app -> {
-			consumer[0] = app.getBean(RecentChangeConsumer.class);
+			consumer[0] = app.getBean(WikipediaStreamConsumer.class);
 			assertThat(consumer[0].isRunning()).isTrue();
-			assertThat(app.getBean("recentChangeStream", SmartLifecycle.class).isRunning()).isTrue();
+			assertThat(app.getBean("wikipediaStream", SmartLifecycle.class).isRunning()).isTrue();
 		});
 		assertThat(consumer[0].isRunning()).isFalse();
 	}
@@ -82,6 +84,7 @@ class WikipediaConfigurationTest {
 			.withInitializer(new ConfigDataApplicationContextInitializer())
 			.withUserConfiguration(WikipediaConfiguration.class)
 			.withBean(EventSink.class, () -> event -> EventSink.Accepted.NEW)
+			.withBean(EventAnnotations.class, () -> annotation -> true)
 			.withBean(Clock.class, Clock::systemUTC)
 			.withBean(MeterRegistry.class, SimpleMeterRegistry::new)
 			.withPropertyValues("pulse.wikipedia.stream-url=" + LOCAL_STREAM)

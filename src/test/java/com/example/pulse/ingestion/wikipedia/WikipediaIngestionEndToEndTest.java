@@ -5,6 +5,7 @@ import com.example.pulse.TestDatabase;
 import com.example.pulse.event.EventId;
 import com.example.pulse.event.Source;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -17,6 +18,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +50,41 @@ class WikipediaIngestionEndToEndTest {
 		server.close();
 	}
 
+	/**
+	 * Both tests share the test database and its single checkpoint row; each starts as a first start.
+	 * Before the first application start the table doesn't exist yet, which is fine.
+	 */
+	@BeforeEach
+	void forgetCheckpoint() {
+		Map<String, Object> db = TestDatabase.properties();
+		try (Connection connection = DriverManager.getConnection((String) db.get("spring.datasource.url"),
+				(String) db.get("spring.datasource.username"), (String) db.get("spring.datasource.password"))) {
+			connection.createStatement().executeUpdate("delete from checkpoints");
+		}
+		catch (SQLException ex) {
+			// No checkpoints table yet: nothing to forget.
+		}
+	}
+
+	/** The real two-stream capture: an edit to "Torrington, Connecticut" and its rollback. */
+	@Test
+	void recordsRevertTagsNextToTheEditsTheyAreAbout() throws Exception {
+		server.then(eventsThenSilence(RecentChangeMapperTest.resource("two-streams.txt")));
+		EventId vandalism = EventId.of(Source.WIKIPEDIA, "enwiki:1379235224");
+		EventId rollback = EventId.of(Source.WIKIPEDIA, "enwiki:1379235231");
+
+		try (ConfigurableApplicationContext app = startApplication()) {
+			awaitAnnotations(app, vandalism, rollback);
+
+			assertThat(storedCount(app, List.of(vandalism, rollback))).isEqualTo(2);
+			assertThat(annotationKinds(app, vandalism)).containsExactly("REVERTED");
+			assertThat(annotationKinds(app, rollback)).containsExactly("REVERT");
+			assertThat(get(app, "/actuator/metrics/pulse.wikipedia.changes.received?tag=stream:REVISION_TAGS"))
+				.contains("\"statistic\":\"COUNT\",\"value\":49.0");
+		}
+		assertThat(server.requests().getFirst().containsKey("Last-Event-ID")).isFalse();
+	}
+
 	@Test
 	void storesKeptChangesOnceAndResumesAfterARestart() throws Exception {
 		// The stream stays open after the capture, like the real one between changes.
@@ -68,7 +107,7 @@ class WikipediaIngestionEndToEndTest {
 			awaitRequests(2);
 			// Shutdown saved the position, and the restart resumed 5 s before it.
 			assertThat(server.requests().get(1).getFirst("Last-Event-ID"))
-				.isEqualTo(ResumePosition.rewind(lastId, RecentChangeConsumer.REPLAY_MARGIN));
+				.isEqualTo(ResumePosition.rewind(lastId, WikipediaStreamConsumer.REPLAY_MARGIN));
 			// This server replays everything; the repeats are duplicates, not new rows.
 			awaitDuplicates(restarted, KEPT.size());
 			assertThat(storedCount(restarted)).isEqualTo(KEPT.size());
@@ -116,14 +155,40 @@ class WikipediaIngestionEndToEndTest {
 	}
 
 	private static int storedCount(ConfigurableApplicationContext app) throws IOException {
+		return storedCount(app, KEPT.stream().map(externalId -> EventId.of(Source.WIKIPEDIA, externalId)).toList());
+	}
+
+	private static int storedCount(ConfigurableApplicationContext app, List<EventId> ids) throws IOException {
 		String sql = new ClassPathResource("sql/count_events_with_id.sql").getContentAsString(StandardCharsets.UTF_8);
 		JdbcClient jdbc = app.getBean(JdbcClient.class);
 		int count = 0;
-		for (String externalId : KEPT) {
-			count += jdbc.sql(sql).param("id", EventId.of(Source.WIKIPEDIA, externalId).value()).query(Integer.class)
-				.single();
+		for (EventId id : ids) {
+			count += jdbc.sql(sql).param("id", id.value()).query(Integer.class).single();
 		}
 		return count;
+	}
+
+	private static List<String> annotationKinds(ConfigurableApplicationContext app, EventId event) throws IOException {
+		String sql = new ClassPathResource("sql/find_annotations_of_event.sql").getContentAsString(StandardCharsets.UTF_8);
+		return app.getBean(JdbcClient.class).sql(sql).param("eventId", event.value())
+			.query((row, i) -> row.getString("kind")).list();
+	}
+
+	private static void awaitAnnotations(ConfigurableApplicationContext app, EventId... events) throws Exception {
+		long deadline = System.currentTimeMillis() + 10_000;
+		while (System.currentTimeMillis() < deadline) {
+			boolean all = true;
+			for (EventId event : events) {
+				all &= !annotationKinds(app, event).isEmpty();
+			}
+			if (all) {
+				// The remaining skipped events of the capture follow the last relevant one.
+				Thread.sleep(300);
+				return;
+			}
+			Thread.sleep(50);
+		}
+		throw new AssertionError("annotations not stored within 10 s");
 	}
 
 	private static String get(ConfigurableApplicationContext app, String path) throws Exception {

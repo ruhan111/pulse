@@ -1,0 +1,40 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Torrington,_Connecticut",
+		"request_id": "478ade6e-1188-4106-b02f-008ae20ff77f",
+		"id": "a94eb82a-de92-4a48-904e-37715395ba8d",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:17:41.409Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936857947
+	},
+	"database": "enwiki",
+	"page_id": 256944,
+	"page_title": "Torrington,_Connecticut",
+	"page_namespace": 0,
+	"rev_id": 1379235224,
+	"rev_timestamp": "2026-10-08T19:17:33Z",
+	"rev_sha1": "oqrqg8fcpiv6hh4b35rgaux7d0337sx",
+	"rev_minor_edit": false,
+	"rev_len": 45471,
+	"rev_content_model": "wikitext",
+	"rev_content_format": "text/x-wiki",
+	"page_is_redirect": false,
+	"comment": "Polishing off common misconceptions",
+	"parsedcomment": "Polishing off common misconceptions",
+	"rev_parent_id": 1377512104,
+	"tags": [
+		"possible vandalism",
+		"wikieditor",
+		"mw-reverted"
+	],
+	"prior_state": {
+		"tags": [
+			"possible vandalism",
+			"wikieditor"
+		]
+	}
+}

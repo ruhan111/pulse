@@ -1,0 +1,50 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/Torrington,_Connecticut",
+		"request_id": "478ade6e-1188-4106-b02f-008ae20ff77f",
+		"id": "9407b2a6-b953-46be-8719-afa2846b09de",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:17:40.991Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936857939
+	},
+	"database": "enwiki",
+	"page_id": 256944,
+	"page_title": "Torrington,_Connecticut",
+	"page_namespace": 0,
+	"rev_id": 1379235231,
+	"rev_timestamp": "2026-10-08T19:17:38Z",
+	"rev_sha1": "h8hb2ch2cafmtakrhy9j2njqqi6u6ia",
+	"rev_minor_edit": true,
+	"rev_len": 45450,
+	"rev_content_model": "wikitext",
+	"rev_content_format": "text/x-wiki",
+	"performer": {
+		"user_text": "ClueBot NG",
+		"user_groups": [
+			"bot",
+			"reviewer",
+			"rollbacker",
+			"*",
+			"user",
+			"autoconfirmed"
+		],
+		"user_is_bot": true,
+		"user_id": 13286072,
+		"user_registration_dt": "2010-10-20T17:01:19Z",
+		"user_edit_count": 6698946
+	},
+	"page_is_redirect": false,
+	"comment": "Reverting possible vandalism by [[Special:Contribs/BibiNetHoo|BibiNetHoo]] to version by EditWarCriminal. [[WP:CBFP|Report False Positive?]] Thanks, [[WP:CBNG|ClueBot NG]]. (4560199) (Bot)",
+	"parsedcomment": "Reverting possible vandalism by <a href=\"/wiki/Special:Contributions/BibiNetHoo\" title=\"Special:Contributions/BibiNetHoo\">BibiNetHoo</a> to version by EditWarCriminal. <a href=\"/wiki/Wikipedia:CBFP\" class=\"mw-redirect\" title=\"Wikipedia:CBFP\">Report False Positive?</a> Thanks, <a href=\"/wiki/Wikipedia:CBNG\" class=\"mw-redirect\" title=\"Wikipedia:CBNG\">ClueBot NG</a>. (4560199) (Bot)",
+	"rev_parent_id": 1379235224,
+	"tags": [
+		"mw-rollback"
+	],
+	"prior_state": {
+		"tags": []
+	}
+}

@@ -13,18 +13,19 @@ distributed when measurements show a problem that distribution solves.
 
 ## Current architecture
 
-_Phase 4c: five RSS feeds are polled every 5 minutes, and English Wikipedia's live edit stream is
-read continuously. Every event is stored once in PostgreSQL, and what happens is measured._
+_Phase 5a: five RSS feeds are polled every 5 minutes, and English Wikipedia's edits are read
+continuously, together with the tags MediaWiki adds to them (e.g. "reverted"). Every event is
+stored once in PostgreSQL, and what happens is measured._
 
 ```
-RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ──┐
-  (scheduled, every 5 min)                          ├──► EventSink ──► JdbcEventSink ──► PostgreSQL
-Wikimedia ──► RecentChangeConsumer ──► SSE ─► map ──┘                  (insert … on conflict do nothing)
-  stream       (own thread, reconnects)                                       ▲
-                     └──► CheckpointStore ──► JdbcCheckpointStore ────────────┘
+RSS feeds ──► RssPoller ──► fetch ─► parse ─► map ─────────────┐
+  (scheduled, every 5 min)                                     ├──► EventSink ──► JdbcEventSink ──► events
+Wikimedia ──► WikipediaStreamConsumer ──► SSE ─┬─► change map ─┘
+ 2 streams,    (own thread, reconnects)        └─► tag map ───────► EventAnnotations ──► JdbcEventAnnotations ──► event_annotations
+ 1 connection        └──► CheckpointStore ──► JdbcCheckpointStore ──► checkpoints
                           (resume position, so a restart continues where it stopped)
 
-RssMetrics, WikipediaMetrics, sink metrics ──► Micrometer ──► /actuator/metrics
+RssMetrics, WikipediaMetrics, store metrics ──► Micrometer ──► /actuator/metrics
 ```
 
 The `events` table's primary key is the `EventId`, so re-polling a feed or restarting the app never
@@ -53,6 +54,8 @@ RSS feeds ──► RssAdapter ──► PulseEvent ──► EventSink ──�
 | `Trend`      | A topic whose activity is unusually high compared with its baseline            |
 | `EventSink`  | Port the ingestion side publishes into, so the rest of the system can change without touching sources |
 | `CheckpointStore` | Port where a streaming source keeps its resume position, so restarts and reconnects continue where they stopped |
+| `EventAnnotation` | A fact learned about an event later, e.g. that a Wikipedia edit was reverted. Stored next to events, never inside them |
+| `EventAnnotations` | Port the ingestion side records annotations into |
 
 ## Package structure
 
@@ -61,7 +64,7 @@ toward `event`:
 
 ```
 com.example.pulse
-├── event/            domain core: PulseEvent, EventId, Source, EventType; ports EventSink, CheckpointStore
+├── event/            domain core: PulseEvent, EventId, Source, EventType, EventAnnotation; ports EventSink, EventAnnotations, CheckpointStore
 ├── ingestion/        source adapters (rss/, hackernews/, …) → publish into EventSink
 ├── trend/            Topic, Mention, MentionExtractor; later counting, baselines, detection
 ├── api/              HTTP interface
@@ -93,7 +96,7 @@ so breaking one fails the build.
 | 2     | Ingestion: one RSS adapter producing real events                       | done    |
 | 3     | Persistence: PostgreSQL, migrations, idempotent ingestion, metrics     | done (RSS gives ≈ 12 new events/hour, see journal 008) |
 | 4     | Multiple sources: a high-volume source first (Wikipedia), then more feeds | done (English Wikipedia, ≈ 2,700–4,700 events/hour, no gaps across restarts and outages; journals 009–011); more sources only if detection misses stories |
-| 5     | Trend detection: per-mention counts, baselines, spike detection       | next: a day of data says Wikipedia is enough, once reverts are removed (journal 012) |
+| 5     | Trend detection: per-mention counts, baselines, spike detection       | in progress: 5a revert annotations from MediaWiki's own tags done (journal 013); 5b counting next |
 | 6     | API: expose trends and the events behind them                          | planned |
 | 7     | Load testing: synthetic generator, measure against SLOs                | planned |
 | 8     | Scale based on evidence (Kafka, Redis, ClickHouse… only if justified)  | planned |
@@ -140,8 +143,9 @@ curl "localhost:8080/actuator/metrics/pulse.events.accepted?tag=result:NEW"   # 
 | `pulse.sink.insert` (`result`) | Insert latency (p50/p99 via `pulse.sink.insert.percentile`) |
 | `pulse.events.lateness` (`source`) | How old new events are when first stored (freshness) |
 | `pulse.events.future` (`source`) | New events a source dated in the future |
-| `pulse.wikipedia.changes.received` | Changes received from the stream, all wikis, before filtering |
-| `pulse.wikipedia.changes.skipped` (`reason`) | Received changes that did not become events (other wiki, bot, …) |
+| `pulse.wikipedia.changes.received` (`stream`) | Events handled per stream (`RECENT_CHANGES`, `REVISION_TAGS`), all wikis, before filtering |
+| `pulse.wikipedia.changes.skipped` (`stream`, `reason`) | Handled events that became neither an event nor an annotation (other wiki, bot, no relevant tag, …) |
+| `pulse.annotations.accepted` (`kind`, `result`) | Annotations stored (`REVERT`, `REVERTED`, `REDIRECT`), new vs. already known |
 | `pulse.wikipedia.connections` (`reason`) | Stream connections by why they ended, and how long each lasted |
 | `hikaricp.connections.*` | Database connection pool usage |
 

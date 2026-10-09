@@ -1,0 +1,34 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://en.wikipedia.org/wiki/The_Inge_Genefke_Award",
+		"request_id": "167f89b8-a239-441c-8b96-ea72472be72b",
+		"id": "15dfb2e0-dde1-4efa-90e8-2beb7e206c83",
+		"domain": "en.wikipedia.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:18:25.682Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936858519
+	},
+	"database": "enwiki",
+	"page_id": 84452334,
+	"page_title": "The_Inge_Genefke_Award",
+	"page_namespace": 0,
+	"rev_id": 1379235318,
+	"rev_timestamp": "2026-10-08T19:18:24Z",
+	"rev_sha1": "8a8g7j4hm926w68x4esngxitb7tjuos",
+	"rev_minor_edit": false,
+	"rev_len": 79,
+	"rev_content_model": "wikitext",
+	"rev_content_format": "text/x-wiki",
+	"page_is_redirect": true,
+	"comment": "Miraclepine moved page [[The Inge Genefke Award]] to [[Inge Genefke Award]]: Fix grammar: [[MOS:THENAME]]#2",
+	"parsedcomment": "Miraclepine moved page <a href=\"/wiki/The_Inge_Genefke_Award\" class=\"mw-redirect\" title=\"The Inge Genefke Award\">The Inge Genefke Award</a> to <a href=\"/wiki/Inge_Genefke_Award\" title=\"Inge Genefke Award\">Inge Genefke Award</a>: Fix grammar: <a href=\"/wiki/MOS:THENAME\" class=\"mw-redirect\" title=\"MOS:THENAME\">MOS:THENAME</a>#2",
+	"tags": [
+		"mw-new-redirect"
+	],
+	"prior_state": {
+		"tags": []
+	}
+}

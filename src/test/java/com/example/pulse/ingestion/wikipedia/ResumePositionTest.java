@@ -22,6 +22,20 @@ class ResumePositionTest {
 	}
 
 	@Test
+	void rewindsEveryStreamOfACombinedConnection() {
+		// A real id from the two-stream connection: one position per stream and datacenter.
+		String id = "[{\"topic\":\"eqiad.mediawiki.recentchange\",\"partition\":0,\"timestamp\":1791486740974},"
+				+ "{\"topic\":\"codfw.mediawiki.recentchange\",\"partition\":0,\"offset\":-1},"
+				+ "{\"topic\":\"eqiad.mediawiki.revision-tags-change\",\"partition\":0,\"timestamp\":1791486740905},"
+				+ "{\"topic\":\"codfw.mediawiki.revision-tags-change\",\"partition\":0,\"offset\":-1}]";
+
+		assertThat(ResumePosition.rewind(id, MARGIN))
+			.contains("\"timestamp\":1791486735974")
+			.contains("\"timestamp\":1791486735905")
+			.contains("\"offset\":-1");
+	}
+
+	@Test
 	void leavesOffsetsAlone() {
 		String id = "[{\"topic\":\"t\",\"partition\":0,\"offset\":42}]";
 

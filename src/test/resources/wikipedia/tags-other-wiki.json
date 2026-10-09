@@ -1,0 +1,47 @@
+{
+	"$schema": "/mediawiki/revision/tags-change/1.0.0",
+	"meta": {
+		"uri": "https://www.wikidata.org/wiki/Q39923296",
+		"request_id": "b61633c8-8f67-4b67-bab7-aa3dfb537fc9",
+		"id": "d776c3a7-3aef-44d7-9630-2d21ef823865",
+		"domain": "www.wikidata.org",
+		"stream": "mediawiki.revision-tags-change",
+		"dt": "2026-10-08T19:17:10.044Z",
+		"topic": "eqiad.mediawiki.revision-tags-change",
+		"partition": 0,
+		"offset": 1936857592
+	},
+	"database": "wikidatawiki",
+	"page_id": 41270771,
+	"page_title": "Q39923296",
+	"page_namespace": 0,
+	"rev_id": 2555107400,
+	"rev_timestamp": "2026-10-08T19:17:09Z",
+	"rev_sha1": "lg1gqcf1kdocmlfu0a5582khkym1ydw",
+	"rev_minor_edit": false,
+	"rev_len": 20917,
+	"rev_content_model": "wikibase-item",
+	"rev_content_format": "application/json",
+	"performer": {
+		"user_text": "Mrwdat3",
+		"user_groups": [
+			"*",
+			"user",
+			"autoconfirmed"
+		],
+		"user_is_bot": false,
+		"user_id": 8443135,
+		"user_registration_dt": "2026-08-13T13:55:21Z",
+		"user_edit_count": 383227
+	},
+	"page_is_redirect": false,
+	"comment": "/* wbcreateclaim-create:1| */ [[Property:P1745]]: 21788, [[:toollabs:quickstatements/#/batch/289880|batch #289880]]",
+	"parsedcomment": "<span class=\"autocomment\">wbcreateclaim-create:1|: </span> <a href=\"/wiki/Property:P1745\" title=\"‎VASCAN ID‎ | ‎identifier for a taxon in the Database of Vascular Plants of Canada‎\"><span class=\"wb-itemlink\"><span class=\"wb-itemlink-label\" lang=\"mul\" dir=\"ltr\">VASCAN ID</span> <span class=\"wb-itemlink-id\">(P1745)</span></span></a>: 21788, <a href=\"https://iw.toolforge.org/quickstatements/#.2Fbatch.2F289880\" class=\"extiw\" title=\"toollabs:quickstatements/\">batch #289880</a>",
+	"rev_parent_id": 2535818314,
+	"tags": [
+		"OAuth CID: 1776"
+	],
+	"prior_state": {
+		"tags": []
+	}
+}
