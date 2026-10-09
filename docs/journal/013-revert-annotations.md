@@ -150,13 +150,59 @@ editor typed.
   annotation.
 - **Test suite:** 155 tests (20 new), all passing, `./mvnw clean test`.
 
+**012's day, recounted with MediaWiki's tags.** I ran the replay below on my machine on 2026-10-09
+(19:23 UTC start), with the tag stream from 7 October 18:20 UTC. Same window as 012 (7 Oct 18:26:24
+to 8 Oct 18:24:02 UTC), dropping every edit annotated `REVERT` or `REVERTED`. Page-hours by distinct
+editors:
+
+| Editors | Raw (012) | Summary rule (012) | MediaWiki tags |
+|---|---:|---:|---:|
+| 1 | 57,350 | 56,052 | 53,811 |
+| 2 | 2,593 | 1,298 | 879 |
+| 3 | 250 | 108 | 80 |
+| 4 | 82 | 35 | 26 |
+| 5–9 | 44 | 21 | 18 |
+| ≥ 10 | 4 (11, 11, 29, 30) | 3 (11, 23, 28) | 2 (22, 29) |
+| **≥ 3** | **380** | **167** | **126** |
+| **≥ 5** | **48** | **24** | **20** |
+| ≥ 3 per hour (÷ 24) | 15.8 | 7.0 | 5.3 |
+
+- **The summary rule left about a quarter of the noise.** The ≥ 3 candidates go from 167 to 126
+  (−25%), and the 2-editor bucket from 1,298 to 879 (−32%). Against raw counts, tags remove 67%
+  of the ≥ 3 candidates.
+- **The summary rule also removed genuine edits.** Anne Carson has 29 editors in her peak hour
+  with tags, against 28 with the summary rule. Its size-matching half paired a genuine edit with
+  an unrelated one.
+- **The ≥ 5 tier shrinks from 14 pages to 11, and the 3 that drop out are exactly the 3 that 012
+  marked as doubtful:** Pneumonic plague ("unclear, possibly news"), James Ramsay (abolitionist)
+  ("unclear") and Carrie (miniseries) ("probably a release"). Their editors were reverts and
+  reverted edits that the summary rule missed.
+- **What remains is 11 pages and about 7 stories,** each with a plausible real-world cause:
+  - Anne Carson;
+  - Nana Patekar;
+  - the MLB playoffs (3 pages);
+  - Hurricane Isaias (3 pages);
+  - Digger (2026 film);
+  - the AFC U-17 qualifiers;
+  - Skydance.
+
+  Judged by eye, none is noise.
+- **The replay is more complete than live operation.** It saw every `REVERTED` up to the day after
+  the window, including late reverts. Live, a vandal edit counts until its revert arrives; that's
+  the retraction 5b has to handle.
+
 ## Consequences / open questions
 
 - **Correction to 012.** Its "after reverts" numbers came from the summary rule, which catches
-  only about a quarter of reverts (3 of 12 here). Its counts with reverts removed (167 page-hours
-  with ≥ 3 editors, 24 with ≥ 5) are therefore **too high**, and its "about 7 candidates an hour"
-  is an upper bound. The size of the correction is unknown until the stored day is annotated (next
-  point). 012's raw numbers, the daily rhythm and the hand inspection stand.
+  only about a quarter of reverts (3 of 12 here). Recounted with tags (Measurements above):
+  - **≥ 3 editors:** 126 page-hours, not 167, so **about 5 candidates an hour, not 7**;
+  - **≥ 5 editors:** 20 page-hours, not 24;
+  - **the strongest tier:** 11 pages, not 14, and the 3 dropped are the ones 012 itself doubted.
+
+  012's raw numbers, the daily rhythm and the hand inspection stand.
+- **The benchmark 5c's baseline has to beat:** "≥ 5 genuine editors in an hour". On this day it
+  gives 20 page-hours, 11 pages and about 7 stories, with no visible false positives. The baseline
+  must add real stories from the 3–4 editor tier (106 page-hours) without letting noise back in.
 - **Annotating the stored day: run once, before about 15 October.** Wikimedia keeps the tag stream
   for at least 8 days (010), so the tags for 012's day (from 2026-10-07 18:26 UTC) can still be
   read.
